@@ -60,7 +60,8 @@ class Cell(nn.Module):
       offset += len(states)
       states.append(s)
 
-    return torch.cat(states[-self._multiplier:], dim=1)
+    result = torch.cat(states[-self._multiplier:], dim=1)
+    return result
 
 
 class Network(nn.Module):
@@ -99,13 +100,16 @@ class Network(nn.Module):
     self.global_pooling = nn.AdaptiveAvgPool2d(1)
     self.classifier = nn.Linear(C_prev, num_classes)
 
-    self.alphas_normal = arch_parameters[0]
-    self.alphas_reduce = arch_parameters[1]
-    self._arch_parameters = arch_parameters
+    # self._arch_parameters = arch_parameters
+    # self.alphas_normal = self._arch_parameters[0]
+    # self.alphas_reduce = self._arch_parameters[1]
+
+    self._initialize_alphas()
 
   def new(self):
-    model_new = Network(self._C, self._num_classes, self._layers, self._criterion).cuda()
-    for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
+    model_new = Network(self._C, self._num_classes, self._layers, self._criterion, self._criterion2,
+                        self._arch_parameters).cuda()
+    for x, y in zip(model_new._arch_parameters, self._arch_parameters):
         x.data.copy_(y.data)
     return model_new
 
@@ -113,13 +117,24 @@ class Network(nn.Module):
     s0 = s1 = self.stem(input)
     for i, cell in enumerate(self.cells):
       if cell.reduction:
-        weights = F.softmax(self.alphas_reduce, dim=-1)
+        weights = torch.softmax(self.alphas_reduce, dim=-1)
       else:
-        weights = F.softmax(self.alphas_normal, dim=-1)
+        weights = torch.softmax(self.alphas_normal, dim=-1)
       s0, s1 = s1, cell(s0, s1, weights)
     out = self.global_pooling(s1)
     logits = self.classifier(out.view(out.size(0),-1))
     return logits
+
+  def _initialize_alphas(self):
+    k = sum(1 for i in range(self._steps) for n in range(2+i))
+    num_ops = len(PRIMITIVES)
+
+    self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    self._arch_parameters = [
+      self.alphas_normal,
+      self.alphas_reduce,
+    ]
 
   def _loss(self, input, target, reduction='mean'):
     logits = self(input)

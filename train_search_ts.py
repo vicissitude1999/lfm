@@ -24,15 +24,16 @@ from genotypes import Genotype
 
 
 parser = argparse.ArgumentParser("cifar")
-parser.add_argument('--data', type=str, default='../data',
+parser.add_argument('--data', type=str, default='../datasets',
                     help='location of the data corpus')
 parser.add_argument('--batch_size', type=int, default=64, help='batch size')
 parser.add_argument('--learning_rate_1', type=float,
                     default=0.025, help='init learning rate')
 parser.add_argument('--learning_rate_2', type=float,
-                    default=0.025, help='init learning rate')
+                    default=0.5, help='init learning rate')
 parser.add_argument('--learning_rate_min', type=float,
                     default=0.001, help='min learning rate')
+parser.add_argument('--encoder', type=str, default='18')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float,
                     default=3e-4, help='weight decay')
@@ -94,6 +95,7 @@ logging.getLogger().addHandler(fh)
 CIFAR_CLASSES = 10
 CIFAR100_CLASSES = 100
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 def main():
   if not torch.cuda.is_available():
@@ -101,6 +103,7 @@ def main():
     sys.exit(1)
 
   device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  # device = 'cpu'
 
   np.random.seed(args.seed)
   if not args.is_parallel:
@@ -121,8 +124,8 @@ def main():
   steps = 4
   k = sum(1 for i in range(steps) for n in range(2 + i))
   num_ops = len(PRIMITIVES)
-  alphas_normal = Variable(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
-  alphas_reduce = Variable(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
+  alphas_normal = 1e-3 * torch.randn(k, num_ops, requires_grad=True).to(device)
+  alphas_reduce = 1e-3 * torch.randn(k, num_ops, requires_grad=True).to(device)
   _arch_parameters = [
     alphas_normal,
     alphas_reduce,
@@ -145,7 +148,7 @@ def main():
   elif args.encoder == '101':
     v = resnet101().cuda()
 
-  r = torch.randn(args.batch_size, requires_grad=True)
+  r = torch.randn(args.batch_size, requires_grad=True, device=device)
 
   if args.is_parallel:
     gpus = [int(i) for i in args.gpu.split(',')]
@@ -178,7 +181,7 @@ def main():
       momentum=args.momentum,
       weight_decay=args.weight_decay_h)
   optimizer_r = torch.optim.SGD(
-    r,
+    [r],
     args.learning_rate_r,
     momentum=args.momentum,
     weight_decay=args.weight_decay_h)
@@ -221,9 +224,10 @@ def main():
   scheduler_r = torch.optim.lr_scheduler.CosineAnnealingLR(
     optimizer_r, float(args.epochs), eta_min=args.learning_rate_min)
 
-  architect = Architect(model1, model2,  args)
+  architect = Architect(model1, model2, v, r, args)
 
   for epoch in range(args.epochs):
+    print("epoch", epoch)
     lr_1 = scheduler_1.get_lr()[0]
     lr_2 = scheduler_2.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
@@ -233,8 +237,8 @@ def main():
     genotype = model1.genotype()
     logging.info('genotype = %s', genotype)
 
-    print(F.softmax(model1.alphas_normal, dim=-1))
-    print(F.softmax(model1.alphas_reduce, dim=-1))
+    # print(F.softmax(model1.alphas_normal, dim=-1))
+    # print(F.softmax(model1.alphas_reduce, dim=-1))
 
     # training
     train_acc, train_obj = train(
@@ -288,26 +292,26 @@ def train(train_queue, valid_queue, external_queue,
     # update model 2 parameters
     optimizer_2.zero_grad()
     # compute weights
-    x = [[v(input_j) * v(input_i) for input_j in input_external] for input_i in input]
-    x = torch.FloatTensor(x).cuda()
-    x = F.softmax(x, dim=1)  # compute softmax along with the rows
+    encoded_train = v(input)
+    encoded_valid = v(input_external)
+    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
+    x = torch.softmax(x, dim=1)  # compute softmax along with the rows
 
     z = [[1 if target_i == target_j else 0 for target_j in target_external] for target_i in target]
     z = torch.FloatTensor(z).cuda()
 
-    model1.eval()  # set to eval or not?
-    u = -model1.loss(input_external, target_external, reduction='none')
-    model1.train()
+    # model1.eval()  # set to eval or not?
+    u = -model1._loss(input_external, target_external, reduction='none')
+    # model1.train()
 
-    a = F.sigmoid(torch.dot(x * z * u, r))
+    a = torch.sigmoid(torch.matmul(x * z * u, r))
 
-    loss = model2.loss(input, target, reduction='none')
+    loss = model2._loss(input, target, reduction='none')
     weighted_loss = torch.dot(a, loss)
 
     weighted_loss.backward()
     nn.utils.clip_grad_norm_(model2.parameters(), args.grad_clip)
     optimizer_2.step()
-
 
     # update model 1 parameters
     optimizer_1.zero_grad()
@@ -316,14 +320,14 @@ def train(train_queue, valid_queue, external_queue,
     nn.utils.clip_grad_norm_(model1.parameters(), args.grad_clip)
     optimizer_1.step()
 
-
+    logits = model1(input)
     prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
     objs.update(loss.item(), n)
     top1.update(prec1.item(), n)
     top5.update(prec5.item(), n)
 
-    if step % args.report_freq == 0:
-      logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+    # if step % args.report_freq == 0:
+    logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
   return top1.avg, objs.avg
 
@@ -347,8 +351,8 @@ def infer(valid_queue, model, criterion):
         top1.update(prec1.item(), n)
         top5.update(prec5.item(), n)
 
-        if step % args.report_freq == 0:
-          logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+        # if step % args.report_freq == 0:
+        logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
   return top1.avg, objs.avg
 

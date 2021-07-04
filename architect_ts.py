@@ -1,8 +1,8 @@
 import torch
-import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.autograd import Variable
+
+import numpy as np
 
 
 def _concat(xs):
@@ -18,7 +18,7 @@ class Architect(object):
     self.model2 = model2
     self.v = v
     self.r = r
-    self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
+    self.optimizer = torch.optim.Adam(self.model2.arch_parameters(),
                                       lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
 
   # compute w1
@@ -32,8 +32,7 @@ class Architect(object):
       moment = torch.zeros_like(theta)
     dtheta = _concat(torch.autograd.grad(
         loss, self.model1.parameters())).data + self.network_weight_decay * theta
-    unrolled_model_w1 = self._construct_model_from_theta(
-        theta.sub(eta, moment + dtheta))
+    unrolled_model_w1 = self._construct_model_from_theta(self.model1, theta.sub(moment + dtheta, alpha=eta))
 
     return unrolled_model_w1
 
@@ -46,11 +45,12 @@ class Architect(object):
     z = [[1 if target_i == target_j else 0 for target_j in target_valid] for target_i in target_train]
     z = torch.FloatTensor(z).cuda()
 
-    x = [[self.v(input_j)*self.v(input_i) for input_j in input_valid] for input_i in input_train]
-    x = torch.FloatTensor(x).cuda()
-    x = F.softmax(x, dim=1) # compute softmax along with the rows
+    encoded_train = self.v(input_train)
+    encoded_valid = self.v(input_valid)
+    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
+    x = torch.softmax(x, dim=1) # compute softmax along with the rows
 
-    a = F.sigmoid(torch.dot(x * z * u, self.r))
+    a = torch.sigmoid(torch.matmul(x * z * u, self.r))
 
     loss = self.model2._loss(input_train, target_train, reduction='none')
     weighted_loss = torch.dot(a, loss)
@@ -64,7 +64,7 @@ class Architect(object):
       moment = torch.zeros_like(theta)
     dtheta = _concat(torch.autograd.grad(
       weighted_loss, self.model2.parameters())).data + self.network_weight_decay * theta
-    unrolled_model_w2 = self._construct_model_from_theta(theta.sub(eta2, moment + dtheta))
+    unrolled_model_w2 = self._construct_model_from_theta(self.model2, theta.sub(moment + dtheta, alpha=eta2))
 
     return unrolled_model_w2
     
@@ -103,21 +103,21 @@ class Architect(object):
                                                   input_train, target_train, input_valid, target_valid)
 
     for g, ig in zip(dalpha, implicit_grads):
-      g.data.sub_(eta, ig.data)
+      g.data.sub_(ig.data, alpha=eta)
 
-    for v, g in zip(self.model.arch_parameters(), dalpha):
+    for v, g in zip(self.model2.arch_parameters(), dalpha):
       if v.grad is None:
         v.grad = Variable(g.data)
       else:
         v.grad.data.copy_(g.data)
 
 
-  def _construct_model_from_theta(self, theta):
-    model_new = self.model.new()
-    model_dict = self.model.state_dict()
+  def _construct_model_from_theta(self, model, theta):
+    model_new = model.new()
+    model_dict = model.state_dict()
 
     params, offset = {}, 0
-    for k, v in self.model.named_parameters():
+    for k, v in model.named_parameters():
       v_length = np.prod(v.size())
       params[k] = theta[offset: offset + v_length].view(v.size())
       offset += v_length
@@ -140,28 +140,29 @@ class Architect(object):
     z = [[1 if target_i == target_j else 0 for target_j in target_valid] for target_i in target_train]
     z = torch.FloatTensor(z).cuda()
 
-    x = [[self.v(input_j) * self.v(input_i) for input_j in input_valid] for input_i in input_train]
-    x = torch.FloatTensor(x).cuda()
-    x = F.softmax(x, dim=1)  # compute softmax along with the rows
+    encoded_train = self.v(input_train)
+    encoded_valid = self.v(input_valid)
+    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
+    x = torch.softmax(x, dim=1)  # compute softmax along with the rows
 
-    a = F.sigmoid(torch.dot(x * z * u, self.r))
+    a = torch.sigmoid(torch.matmul(x * z * u, self.r))
 
     # dα weighted Ltrain(w+,α)
-    for p, v in zip(self.model.parameters(), vector):
-        p.data.add_(R, v)
+    for p, v in zip(self.model2.parameters(), vector):
+        p.data.add_(v, alpha=R)
     loss = self.model2._loss(input_train, target_train, reduction='none')
     weighted_loss = torch.dot(a, loss)
-    grads_p = torch.autograd.grad(weighted_loss, self.model.arch_parameters())
+    grads_p = torch.autograd.grad(weighted_loss, self.model2.arch_parameters())
 
     # dα weighted Ltrain(w-,α)
-    for p, v in zip(self.model.parameters(), vector):
-        p.data.sub_(2 * R, v)
+    for p, v in zip(self.model2.parameters(), vector):
+        p.data.sub_(v, alpha=2*R)
     loss = self.model2._loss(input_train, target_train, reduction='none')
     weighted_loss = torch.dot(a, loss)
-    grads_n = torch.autograd.grad(weighted_loss, self.model.arch_parameters())
+    grads_n = torch.autograd.grad(weighted_loss, self.model2.arch_parameters())
 
     # change w- back to w
-    for p, v in zip(self.model.parameters(), vector):
-        p.data.add_(R, v)
+    for p, v in zip(self.model2.parameters(), vector):
+        p.data.add_(v, alpha=R)
 
     return [(x - y).div_(2 * R) for x, y in zip(grads_p, grads_n)]
