@@ -22,6 +22,8 @@ from teacher_update import *
 from genotypes import PRIMITIVES
 from genotypes import Genotype
 
+torch.autograd.set_detect_anomaly(True)
+
 
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../datasets',
@@ -30,7 +32,7 @@ parser.add_argument('--batch_size', type=int, default=64, help='batch size')
 parser.add_argument('--learning_rate_1', type=float,
                     default=0.025, help='init learning rate')
 parser.add_argument('--learning_rate_2', type=float,
-                    default=0.5, help='init learning rate')
+                    default=0.025, help='init learning rate')
 parser.add_argument('--learning_rate_min', type=float,
                     default=0.001, help='min learning rate')
 parser.add_argument('--encoder', type=str, default='18')
@@ -94,8 +96,6 @@ logging.getLogger().addHandler(fh)
 
 CIFAR_CLASSES = 10
 CIFAR100_CLASSES = 100
-
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 def main():
   if not torch.cuda.is_available():
@@ -244,7 +244,7 @@ def main():
     train_acc, train_obj = train(
         train_queue, valid_queue, external_queue,
         model1, model2, v, r, architect,
-        optimizer_1, optimizer_2,
+        optimizer_1, optimizer_2, optimizer_v, optimizer_r,
         lr_1, lr_2)
     logging.info('train_acc %f', train_acc)
     scheduler_1.step()
@@ -263,7 +263,8 @@ def main():
 
 def train(train_queue, valid_queue, external_queue,
           model1, model2, v, r, architect,
-          optimizer_1, optimizer_2, lr_1, lr_2):
+          optimizer_1, optimizer_2, optimizer_v, optimizer_r,
+          lr_1, lr_2):
   objs = utils.AvgrageMeter()
   top1 = utils.AvgrageMeter()
   top5 = utils.AvgrageMeter()
@@ -284,34 +285,36 @@ def train(train_queue, valid_queue, external_queue,
     input_external = input_external.cuda()
     target_external = target_external.cuda(non_blocking=True)
 
-    # update alphas
-    architect.step(input, target, input_external, target_external,
-                   lr_1, lr_2, optimizer_1, optimizer_2,
-                   unrolled=args.unrolled)
-
-    # update model 2 parameters
-    optimizer_2.zero_grad()
     # compute weights
-    encoded_train = v(input)
-    encoded_valid = v(input_external)
-    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
-    x = torch.softmax(x, dim=1)  # compute softmax along with the rows
-
+    x = torch.einsum('ij, kj -> ik', [v(input), v(input_external)])
+    x = torch.softmax(x, dim=1) # compute softmax along with the rows
     z = [[1 if target_i == target_j else 0 for target_j in target_external] for target_i in target]
     z = torch.FloatTensor(z).cuda()
-
     # model1.eval()  # set to eval or not?
     u = -model1._loss(input_external, target_external, reduction='none')
     # model1.train()
-
     a = torch.sigmoid(torch.matmul(x * z * u, r))
 
+    # update alphas
+    architect.step(input, target, input_external, target_external,
+                   a, lr_1, lr_2, optimizer_1, optimizer_2,
+                   unrolled=args.unrolled)
+
+    # update r
+    optimizer_r.zero_grad()
+    loss_r = model2._loss(input_external, target_external)
+    loss_r.backward()
+
+
+    # update model 2 parameters
+    optimizer_2.zero_grad()
     loss = model2._loss(input, target, reduction='none')
     weighted_loss = torch.dot(a, loss)
-
     weighted_loss.backward()
     nn.utils.clip_grad_norm_(model2.parameters(), args.grad_clip)
     optimizer_2.step()
+    optimizer_r.step()
+
 
     # update model 1 parameters
     optimizer_1.zero_grad()

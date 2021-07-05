@@ -37,21 +37,8 @@ class Architect(object):
     return unrolled_model_w1
 
   # valid data are used to compute weights
-  def _compute_unrolled_model_w2(self, input_train, target_train, input_valid, target_valid,
+  def _compute_unrolled_model_w2(self, input_train, target_train, a,
                                  eta2, optim_2, unrolled_model_w1):
-    # compute weights
-    u = -unrolled_model_w1._loss(input_valid, target_valid, reduction='none')
-
-    z = [[1 if target_i == target_j else 0 for target_j in target_valid] for target_i in target_train]
-    z = torch.FloatTensor(z).cuda()
-
-    encoded_train = self.v(input_train)
-    encoded_valid = self.v(input_valid)
-    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
-    x = torch.softmax(x, dim=1) # compute softmax along with the rows
-
-    a = torch.sigmoid(torch.matmul(x * z * u, self.r))
-
     loss = self.model2._loss(input_train, target_train, reduction='none')
     weighted_loss = torch.dot(a, loss)
 
@@ -71,12 +58,12 @@ class Architect(object):
 
   def step(self,
            input_train, target_train, input_valid, target_valid,
-           eta, eta2, optim_1, optim_2,
+           a, eta, eta2, optim_1, optim_2,
            unrolled):
     self.optimizer.zero_grad()
     if unrolled:
         self._backward_step_unrolled(
-          input_train, target_train, input_valid, target_valid, eta, eta2, optim_1, optim_2)
+          input_train, target_train, input_valid, target_valid, a, eta, eta2, optim_1, optim_2)
     else:
         pass
     self.optimizer.step()
@@ -87,20 +74,20 @@ class Architect(object):
                               target_train,
                               input_valid,
                               target_valid,
+                              a,
                               eta, eta2,
                               optim_1, optim_2):
     unrolled_model_w1 = self._compute_unrolled_model(
         input_train, target_train, eta, optim_1)
     unrolled_model_w2 = self._compute_unrolled_model_w2(
-      input_train, target_train, input_valid, target_valid, eta2, optim_2, unrolled_model_w1
+      input_train, target_train, a, eta2, optim_2, unrolled_model_w1
     )
     unrolled_loss = unrolled_model_w2._loss(input_valid, target_valid)
     unrolled_loss.backward()
 
     dalpha = [v.grad for v in unrolled_model_w2.arch_parameters()]
     vector = [v.grad.data for v in unrolled_model_w2.parameters()]
-    implicit_grads = self._hessian_vector_product(vector, unrolled_model_w1,
-                                                  input_train, target_train, input_valid, target_valid)
+    implicit_grads = self._hessian_vector_product(vector, input_train, target_train, a)
 
     for g, ig in zip(dalpha, implicit_grads):
       g.data.sub_(ig.data, alpha=eta)
@@ -128,24 +115,9 @@ class Architect(object):
     return model_new.cuda()
 
 
-  def _hessian_vector_product(self, vector, unrolled_model_w1,
-                              input_train, target_train, input_valid, target_valid,
-                              r=1e-2):
+  def _hessian_vector_product(self, vector, input_train, target_train, a, r=1e-2):
     # epsilon
     R = r / _concat(vector).norm()
-
-    # compute weights
-    u = unrolled_model_w1._loss(input_valid, target_valid, reduction='none')
-
-    z = [[1 if target_i == target_j else 0 for target_j in target_valid] for target_i in target_train]
-    z = torch.FloatTensor(z).cuda()
-
-    encoded_train = self.v(input_train)
-    encoded_valid = self.v(input_valid)
-    x = torch.einsum('ij, kj -> ik', [encoded_train, encoded_valid])
-    x = torch.softmax(x, dim=1)  # compute softmax along with the rows
-
-    a = torch.sigmoid(torch.matmul(x * z * u, self.r))
 
     # dα weighted Ltrain(w+,α)
     for p, v in zip(self.model2.parameters(), vector):
