@@ -36,6 +36,42 @@ def accuracy(output, target, topk=(1,)):
     res.append(correct_k.mul_(100.0/batch_size))
   return res
 
+# use loss_w1 and target_a to compute average loss of each class
+def compute_weighted_loss(loss_w1, target_a, target_b, alpha=1.0):
+  avg = {}
+  for i in range(target_a.size(0)):
+    c = target_a[i].detach().item()
+    # print(avg)
+    if c not in avg:
+      avg[c] = [1, loss_w1[i]]
+    else:
+      avg[c][0] += 1
+      avg[c][1] += loss_w1[i]
+
+  weights = torch.empty(target_a.size()).cuda()
+  for i in range(weights.size(0)):
+    ac = target_a[i].detach().item()
+    bc = target_b[i].detach().item()
+    weights[i] = alpha * avg[ac][1] / avg[ac][0] + (1-alpha) * avg[bc][1] / avg[bc][0]
+
+  return weights
+
+def mixup_data(x, y, alpha=1.0, use_cuda=True):
+  '''Returns mixed inputs, pairs of targets, and lambda'''
+  if alpha > 0:
+    lam = np.random.beta(alpha, alpha)
+  else:
+    lam = 1
+
+  batch_size = x.size()[0]
+  if use_cuda:
+    index = torch.randperm(batch_size).cuda()
+  else:
+    index = torch.randperm(batch_size)
+
+  mixed_x = lam * x + (1 - lam) * x[index, :]
+  y_a, y_b = y, y[index]
+  return mixed_x, y_a, y_b, lam
 
 class Cutout(object):
     def __init__(self, length):
