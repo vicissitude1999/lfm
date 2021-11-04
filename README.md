@@ -5,6 +5,7 @@ Search code for models "darts", "pcdarts", "pdarts" are adaptded from the origin
 to work with PyTorch 1.8.0.
 Search code for models "darts-lfm", "pcdarts-lfm", "pdarts-lfm" include implementations for the LFM model in "search.py".
 
-Evaluate code is combined from 3 sets of evaluate code in "darts", "pcdarts", "pdarts" to avoid repetitive code.
+Evaluation code is combined from 3 sets of evaluate code in "darts", "pcdarts", "pdarts" to avoid repetitive code (causes difficulties to sync changes) and to work with PyTorch 1.8.0.
 
 Use commands in "search.sh" and "train.sh" in "shyaml" directories to and search and train, respectively. "shyaml" stands for shell scripts and yaml files.
+Searched architectures are stored in "genotypes.py".
