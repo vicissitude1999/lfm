@@ -1,0 +1,31 @@
+kubectl cp main/ ecepxie/renyi-login:/renyi-volume
+kubectl cp formulation2/ ecepxie/renyi-login:/renyi-volume
+kubectl cp learning_from_mistakes/ ecepxie/renyi-login:/renyi-volume
+kubectl cp learning_from_mistakes_copy/ ecepxie/renyi-login:/renyi-volume
+kubectl cp LBT/ ecepxie/renyi-login:/renyi-volume
+kubectl cp LFM/ ecepxie/renyi-login:/renyi-volume
+kubectl cp PC-DARTS/ ecepxie/renyi-login:/renyi-volume
+kubectl cp env_darts.yaml env_lpt.yaml ecepxie/renyi-login:/renyi-volume
+kubectl cp kaggle.json ecepxie/renyi-login:/root/.kaggle
+
+kubectl cp ecepxie/renyi-login:/renyi-volume/LFM/completed.txt /home/renyi/Documents/LFM/completed.txt
+
+conda update -n base -c defaults conda
+conda env create --debug -f env_me.yml
+
+conda env create --prefix /renyi-volume/env_darts -f env_darts.yaml
+conda env create -f env_darts.yaml --name env_darts
+conda env create -f env_cpd.yaml --name env_cpd
+
+
+
+kubectl exec -it renyi-login -- bash
+watch -n 0.1 -d nvidia-smi
+
+
+
+cat completed.txt | while read line
+do
+  echo $line
+  kubectl cp ecepxie/renyi-login:/renyi-volume/LFM/$line /home/renyi/Documents/LFM/runs/$line
+done
