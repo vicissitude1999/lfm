@@ -1,57 +1,103 @@
+#apiVersion: batch/v1
+#kind: Job # Deployment will automatically restart when killed. Use Pod if not needed
+#metadata:
+#  labels:
+#    k8s-app: research
+#  generateName: renyi-darts-lfm-
+#  namespace: ecepxie
+#spec:
+#  template:
+#    metadata:
+#      labels:
+#        k8s-app: research
+#    spec:
+#      restartPolicy: Never
+#      containers:
+#        - name: research
+#          image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
+#          imagePullPolicy: Always
+#          workingDir: /renyi-volume/LFM/darts-lfm/shyaml
+#          command: [ "bash", "search.sh" ]
+#          resources:
+#            requests:
+#              memory: "4Gi"
+#              cpu: "4"
+#              nvidia.com/gpu: 1
+#              ephemeral-storage: 2Gi
+#            limits:
+#              memory: "8Gi"
+#              cpu: "8"
+#              nvidia.com/gpu: 1
+#              ephemeral-storage: 2Gi
+#          volumeMounts:
+#            - mountPath: /renyi-volume
+#              name: renyi-volume
+#            - mountPath: /dev/shm
+#              name: dshm
+#      volumes:
+#        - name: renyi-volume
+#          persistentVolumeClaim:
+#            claimName: renyi-volume
+#        - name: data
+#          emptyDir: { }
+#        - name: dshm
+#          emptyDir:
+#            medium: Memory
+#      nodeSelector:
+#        gpu-type: "1080Ti"
+#        nautilus.io/disktype: nvme
+#       affinity:
+#         nodeAffinity:
+#           requiredDuringSchedulingIgnoredDuringExecution:
+#             nodeSelectorTerms:
+#             - matchExpressions:
+#               - key: gpu-type
+#                 operator: In # Use NotIn for other types
+#                 values:
+#                 - 1080Ti
+
+
+
 apiVersion: batch/v1
-kind: Job # Deployment will automatically restart when killed. Use Pod if not needed
+kind: Job
 metadata:
-  labels:
-    k8s-app: research
-  generateName: renyi-darts-lfm-
-  namespace: ecepxie
+  name: renyi-darts-lfm
 spec:
-  template:
-    metadata:
-      labels:
-        k8s-app: research
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: research
-          image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
-          imagePullPolicy: Always
-          workingDir: /renyi-volume/LFM/darts-lfm
-          command: [ "bash", "search.sh" ]
-          resources:
-            requests:
-              memory: "4Gi"
-              cpu: "4"
-              nvidia.com/gpu: 1
-              ephemeral-storage: 10Gi
-            limits:
-              memory: "8Gi"
-              cpu: "8"
-              nvidia.com/gpu: 1
-              ephemeral-storage: 20Gi
-          volumeMounts:
-            - mountPath: /renyi-volume
-              name: renyi-volume
-            - mountPath: /dev/shm
-              name: dshm
-      volumes:
-        - name: renyi-volume
-          persistentVolumeClaim:
-            claimName: renyi-volume
-        - name: data
-          emptyDir: { }
-        - name: dshm
-          emptyDir:
-            medium: Memory
-      nodeSelector:
-        gpu-type: "1080Ti"
-        nautilus.io/disktype: nvme
-      # affinity:
-      #   nodeAffinity:
-      #     requiredDuringSchedulingIgnoredDuringExecution:
-      #       nodeSelectorTerms:
-      #       - matchExpressions:
-      #         - key: gpu-type
-      #           operator: In # Use NotIn for other types
-      #           values:
-      #           - 1080Ti
+  containers:
+  - name: gpu-container
+    image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+    workingDir: /renyi-volume/LFM/darts-lfm/shyaml
+    command: [ "bash", "search.sh" ]
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "4"
+        nvidia.com/gpu: 1
+      limits:
+        memory: "4Gi"
+        cpu: "4"
+        nvidia.com/gpu: 1
+    volumeMounts:
+    - name: renyi-volume
+      mountPath: /renyi-volume
+
+  restartPolicy: Never
+
+  volumes:
+    - name: renyi-volume
+      persistentVolumeClaim:
+        claimName: renyi-volume
+
+  affinity:
+     nodeAffinity:
+       requiredDuringSchedulingIgnoredDuringExecution:
+         nodeSelectorTerms:
+         - matchExpressions:
+           - key: gpu-type
+             operator: In
+             values:
+               - 1080Ti
+           - key: topology.kubernetes.io/region
+             operator: In
+             values:
+               - us-west

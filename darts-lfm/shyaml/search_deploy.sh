@@ -1,7 +1,6 @@
-cd ..
-rm -rf search-*
-rm -rf eval-*
-kubectl cp ../darts-lfm/ ecepxie/renyi-login:/renyi-volume/LFM/
+cd ../../scripts
+bash sync.sh
 
-cd shyaml
+cd ../darts-lfm/shyaml
+
 kubectl create -f search.yaml

@@ -5,7 +5,6 @@ import time
 import glob
 import logging
 import argparse
-import copy
 
 import numpy as np
 import torch
@@ -25,7 +24,7 @@ parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../../data', help='location of the data corpus')
 parser.add_argument('--set', type=str, default='cifar10', help='location of the data corpus')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
-parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
+parser.add_argument('--learning_rate', type=float, default=0.1, help='init learning rate')
 parser.add_argument('--learning_rate_min', type=float, default=0.0, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
@@ -49,12 +48,23 @@ parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weigh
 # New hyperparameters
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--learning_rate_beta', type=float, default=2e-3)
-parser.add_argument('--model_beta', type=float, help='beta initial value, -1 means unif[0.45, 0.55]', default=-1)
+parser.add_argument('--model_beta', type=float, help='fixed beta value, or unif[0.45, 0.55] (denoted -1)', default=-1)
+parser.add_argument('--resume', type=bool, default=False)
+parser.add_argument('--resume_dir', type=str)
+parser.add_argument('--debug', action='store_true', default=False)
 
 args = parser.parse_args()
 
-args.save = 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+args.method = 'pcdarts-lfm'
+dirs = ['../runs', '../runs_trash']
+for d in dirs:
+    os.makedirs(os.path.join(d, args.method), exist_ok=True)
+if not args.resume:
+    run = dirs[1] if args.debug else dirs[0]
+    args.save = os.path.join(run, args.method, 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
+    utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+else:
+    args.save = os.path.join(dirs[0], args.method, args.resume_dir)
 
 # logging
 log_format = '%(asctime)s %(message)s'
@@ -90,8 +100,9 @@ def main():
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion)
+    reweighted_model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion, shared_a=model.arch_parameters())
     model = model.cuda()
-    reweighted_model = copy.deepcopy(model)
+    reweighted_model = reweighted_model.cuda()
     model_beta = LinearCombination(args.model_beta).cuda()
     if ngpu > 1:
         model = nn.parallel.DataParallel(model, device_ids=gpus, output_device=gpus[0])
@@ -139,26 +150,16 @@ def main():
     for epoch in range(args.epochs):
         lr = scheduler.get_last_lr()[0]
         lr_rw = scheduler_rw.get_last_lr()[0]
-        logging.info('epoch %d lr %e lr_rw %e', epoch, lr, lr_rw)
+        logging.info('\nepoch %d lr %e lr_rw %e', epoch, lr, lr_rw)
 
         genotype = model.genotype()
-        genotype_rw = reweighted_model.genotype()
         logging.info('genotype = %s', genotype)
-        logging.info('genotype_rw = %s', genotype_rw)
         logging.info('beta = %f', model_beta.beta)
 
         writer.add_scalar('LR/lr', lr, epoch)
         writer.add_scalar('LR/lr_rw', lr_rw, epoch)
         writer.add_text('genotype', str(genotype), epoch)
         writer.add_scalar('beta', model_beta.beta, epoch)
-
-
-        # print("Model")
-        # print(F.softmax(model.alphas_normal, dim=-1))
-        # print(F.softmax(model.alphas_reduce, dim=-1))
-        # print("Reweighted Model")
-        # print(F.softmax(reweighted_model.alphas_normal, dim=-1))
-        # print(F.softmax(reweighted_model.alphas_reduce, dim=-1))
 
         # training
         train_acc, train_obj, train_obj_rw = train(
@@ -187,20 +188,21 @@ def train(train_queue, valid_queue, model, reweighted_model, architect, criterio
     for step, (input, target) in enumerate(train_queue):
         model.train()
         n = input.size(0)
-        input = input.cuda()
+        input = input.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
         # get a random minibatch from the search queue with replacement
-        input_valid, target_valid = next(iter(valid_queue))
-        input_valid = input_valid.cuda()
+        try:
+            input_valid, target_valid = next(valid_queue_iter)
+        except:
+            valid_queue_iter = iter(valid_queue)
+            input_valid, target_valid = next(valid_queue_iter)
+        input_valid = input_valid.cuda(non_blocking=True)
         target_valid = target_valid.cuda(non_blocking=True)
 
         if epoch >= 15:
             architect.step(input, target, input_valid, target_valid, lr, lr_rw,
                            optimizer, optimizer_rw, unrolled=args.unrolled)
-            # copy arch parameters of W1 to W2
-            for v, v_rw in zip(model.arch_parameters(), reweighted_model.arch_parameters()):
-                v_rw.data.copy_(v.data)
 
         # Update the model W1 parameters using initial loss function
         optimizer.zero_grad()
@@ -234,12 +236,13 @@ def train(train_queue, valid_queue, model, reweighted_model, architect, criterio
             logging.info('train %03d loss %e loss_rw %e top1 %f top5 %f', step, objs.avg, objr.avg, top1.avg, top5.avg)
             writer.add_scalar('LossBatch/train', objs.avg, epoch * len(train_queue) + step)
             writer.add_scalar('LossRWBatch/train', objr.avg, epoch * len(train_queue) + step)
-            writer.add_scalar('AccuTop1/train', top1.avg, epoch * len(train_queue) + step)
-            writer.add_scalar('AccuTop5/train', top5.avg, epoch * len(train_queue) + step)
+            writer.add_scalar('AccuBatch/train', top1.avg, epoch * len(train_queue) + step)
 
         writer.add_scalar('LossEpoch/train', objs.avg, epoch)
         writer.add_scalar('LossRWEpoch/train', objr.avg, epoch)
         writer.add_scalar('AccuEpoch/train', top1.avg, epoch)
+        if args.debug:
+            break
 
     return top1.avg, objs.avg, objr.avg
 
@@ -250,7 +253,7 @@ def infer(valid_queue, model, reweighted_model, model_beta, criterion, epoch):
     top5 = utils.AvgrageMeter()
     model.eval()
     for step, (input, target) in enumerate(valid_queue):
-        input = input.cuda()
+        input = input.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
         logits = model(input)
@@ -267,11 +270,12 @@ def infer(valid_queue, model, reweighted_model, model_beta, criterion, epoch):
         if step % args.report_freq == 0:
             logging.info('valid %03d loss %e top1 %f top5 %f', step, objs.avg, top1.avg, top5.avg)
             writer.add_scalar('LossBatch/valid', objs.avg, epoch * len(valid_queue) + step)
-            writer.add_scalar('AccuTop1/valid', top1.avg, epoch * len(valid_queue) + step)
-            writer.add_scalar('AccuTop5/valid', top5.avg, epoch * len(valid_queue) + step)
+            writer.add_scalar('AccuBatch/valid', top1.avg, epoch * len(valid_queue) + step)
 
         writer.add_scalar('LossEpoch/valid', objs.avg, epoch)
         writer.add_scalar('AccuEpoch/valid', top1.avg, epoch)
+        if args.debug:
+            break
 
     return top1.avg, objs.avg
 

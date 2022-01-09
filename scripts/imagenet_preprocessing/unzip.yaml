@@ -16,15 +16,15 @@ spec:
       - name: research
         image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
         imagePullPolicy: Always
-        workingDir: /renyi-volume/LFM/
+        workingDir: /renyi-volume/LFM/scripts/imagenet
         command: ["bash", "unzip.sh"]
         resources:
           requests:
-            memory: "8Gi"
-            cpu: "16"
+            memory: "4Gi"
+            cpu: "4"
           limits:
-            memory: "8Gi"
-            cpu: "16"
+            memory: "4Gi"
+            cpu: "4"
         volumeMounts:
         - mountPath: /renyi-volume
           name: renyi-volume

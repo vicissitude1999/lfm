@@ -79,7 +79,7 @@ class Cell(nn.Module):
 class Network(nn.Module):
 
     def __init__(self, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3, switches_normal=[],
-                 switches_reduce=[], p=0.0):
+                 switches_reduce=[], p=0.0, shared_a=None):
         super(Network, self).__init__()
         self._C = C
         self._num_classes = num_classes
@@ -89,6 +89,7 @@ class Network(nn.Module):
         self._multiplier = multiplier
         self.p = p
         self.switches_normal = switches_normal
+        self.shared_a = shared_a
         switch_ons = []
         for i in range(len(switches_normal)):
             ons = 0
@@ -156,14 +157,19 @@ class Network(nn.Module):
         return self._criterion(logits, target)
 
     def _initialize_alphas(self):
-        k = sum(1 for i in range(self._steps) for n in range(2 + i))
-        num_ops = self.switch_on
-        self.alphas_normal = nn.Parameter(torch.FloatTensor(1e-3 * np.random.randn(k, num_ops)))
-        self.alphas_reduce = nn.Parameter(torch.FloatTensor(1e-3 * np.random.randn(k, num_ops)))
-        self._arch_parameters = [
-            self.alphas_normal,
-            self.alphas_reduce,
-        ]
+        if self.shared_a is None:
+            k = sum(1 for i in range(self._steps) for n in range(2 + i))
+            num_ops = self.switch_on
+            self.alphas_normal = nn.Parameter(torch.FloatTensor(1e-3 * np.random.randn(k, num_ops)))
+            self.alphas_reduce = nn.Parameter(torch.FloatTensor(1e-3 * np.random.randn(k, num_ops)))
+            self._arch_parameters = [
+                self.alphas_normal,
+                self.alphas_reduce,
+            ]
+        else:
+            self._arch_parameters = self.shared_a
+            self.alphas_normal = self._arch_parameters[0]
+            self.alphas_reduce = self._arch_parameters[1]
 
     def arch_parameters(self):
         return self._arch_parameters

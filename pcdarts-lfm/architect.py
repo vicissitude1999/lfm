@@ -17,14 +17,14 @@ class Architect(object):
         self.model = model
         self.reweighted_model = reweighted_model
         self.model_beta = model_beta
-        self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
+        self.optimizer_a = torch.optim.Adam(self.model.arch_parameters(),
                                           lr=args.arch_learning_rate, betas=(0.5, 0.999),
                                           weight_decay=args.arch_weight_decay)
-        self.optimizer_rw = torch.optim.Adam(self.reweighted_model.arch_parameters(),
-                                             lr=args.arch_learning_rate, betas=(0.5, 0.999),
-                                             weight_decay=args.arch_weight_decay)
-        self.optimizer_beta = torch.optim.Adam(self.model_beta.parameters(),
-                                               lr=args.learning_rate_beta, betas=(0.5, 0.999))
+        if args.model_beta == -1:
+            self.optimizer_beta = torch.optim.Adam(self.model_beta.parameters(),
+                                                   lr=args.learning_rate_beta, betas=(0.5, 0.999))
+        else:
+            self.optimizer_beta = None
 
     def _compute_unrolled_model(self, input, target, eta, network_optimizer):
         loss = self.model._loss(input, target)
@@ -56,55 +56,27 @@ class Architect(object):
             theta.sub(eta, moment + dtheta))
         return unrolled_model_rw
 
-    def step(self,
-             input_train,
-             target_train,
-             input_valid,
-             target_valid,
-             eta,
-             eta_rw,
-             network_optimizer,
-             network_optimizer_rw,
-             unrolled):
-        self.optimizer.zero_grad()
-        self.optimizer_rw.zero_grad()
-        self.optimizer_beta.zero_grad()
+    def step(self, input_train, target_train, input_valid, target_valid,
+             eta, eta_rw, network_optimizer, network_optimizer_rw, unrolled):
+        self.optimizer_a.zero_grad()
+        if self.optimizer_beta is not None:
+            self.optimizer_beta.zero_grad()
         if unrolled:
-            self._backward_step_unrolled(
-                input_train, target_train, input_valid, target_valid,
-                eta, eta_rw, network_optimizer, network_optimizer_rw)
+            self._backward_step_unrolled(input_train, target_train, input_valid, target_valid,
+                                         eta, eta_rw, network_optimizer, network_optimizer_rw)
         else:
             logits = self.model(input_valid)
             logits_rw = self.reweighted_model(input_valid)
             output = self.model_beta(logits, logits_rw)
             valid_loss = F.cross_entropy(output, target_valid)
             valid_loss.backward()
-            dalpha = [v.grad for v in self.model.arch_parameters()]
-            dalpha_rw = [
-                v.grad for v in self.reweighted_model.arch_parameters()]
-            for g, g_rw in zip(dalpha, dalpha_rw):
-                g.data.add_(g_rw)
-            for v, v_rw, g in zip(self.model.arch_parameters(), self.reweighted_model.arch_parameters(), dalpha):
-                if v.grad is None:
-                    v.grad = Variable(g.data)
-                else:
-                    v.grad.data.copy_(g.data)
-                if v_rw.grad is None:
-                    v_rw.grad = Variable(g.data)
-                else:
-                    v_rw.grad.data.copy_(g.data)
-        self.optimizer.step()
-        self.optimizer_rw.step()
-        self.optimizer_beta.step()
+        self.optimizer_a.step()
+        if self.optimizer_beta is not None:
+            self.optimizer_beta.step()
 
-    def _backward_step_unrolled(self,
-                                input_train,
-                                target_train,
-                                input_valid,
-                                target_valid,
-                                eta, eta_rw,
-                                network_optimizer,
-                                network_optimizer_rw):
+    # the following functions are used for when unrolled = True
+    def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid,
+                                eta, eta_rw, network_optimizer, network_optimizer_rw):
         unrolled_model = self._compute_unrolled_model(
             input_train, target_train, eta, network_optimizer)
 

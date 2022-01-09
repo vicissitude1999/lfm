@@ -93,7 +93,7 @@ class Zero(nn.Module):
 class ZeroPDARTS(nn.Module):
 
     def __init__(self, stride):
-        super(Zero, self).__init__()
+        super(ZeroPDARTS, self).__init__()
         self.stride = stride
 
     def forward(self, x):

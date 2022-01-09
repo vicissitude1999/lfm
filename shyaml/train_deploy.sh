@@ -1,5 +1,5 @@
-cd ../scripts
-bash sync.sh
+#cd ../scripts
+#bash sync.sh
 
-cd ../shyaml
+kubectl cp /home/renyi/Documents/LFM/shyaml ecepxie/renyi-login:/renyi-volume/LFM/
 kubectl create -f train.yaml

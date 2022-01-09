@@ -1,22 +1,26 @@
 import os
 import sys
+sys.path.append("..")
 import time
 import glob
 import numpy as np
-import torch
 import utils
 import logging
 import argparse
+import copy
+import random
+
+import torch
 import torch.nn as nn
 import torch.utils
 import torch.nn.functional as F
 import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
-import copy
-from model_search import Network
+import torch.distributed as dist
+
 from genotypes import PRIMITIVES
 from genotypes import Genotype
-from torch.autograd import Variable
+from model_search import Network
 from combination import *
 
 parser = argparse.ArgumentParser("cifar")
@@ -47,8 +51,9 @@ parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weigh
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--learning_rate_beta', type=float, default=2e-3)
 parser.add_argument('--model_beta', type=float, help='beta initial value, -1 means unif[0.45, 0.55]', default=-1)
-parser.add_argument('--is_parallel', type=int, default=0)
-
+parser.add_argument('--resume', type=bool, default=False)
+parser.add_argument('--resume_dir', type=str)
+parser.add_argument('--debug', action='store_true', default=False)
 # pdarts unique params
 parser.add_argument('--dropout_rate', action='append', default=[], help='dropout rate of skip connect')
 parser.add_argument('--add_width', action='append', default=['0'], help='add channels')
@@ -56,9 +61,16 @@ parser.add_argument('--add_layers', action='append', default=['0'], help='add la
 
 args = parser.parse_args()
 
-
-args.save = 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+args.method = 'pdarts-lfm'
+dirs = ['../runs', '../runs_trash']
+for d in dirs:
+    os.makedirs(os.path.join(d, args.method), exist_ok=True)
+if not args.resume:
+    run = dirs[1] if args.debug else dirs[0]
+    args.save = os.path.join(run, args.method, 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
+    utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+else:
+    args.save = os.path.join(dirs[0], args.method, args.resume_dir)
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -71,6 +83,13 @@ CIFAR_CLASSES = 10
 if args.set == 'cifar100':
     CIFAR_CLASSES = 100
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
 
 def main():
     if not torch.cuda.is_available():
@@ -80,11 +99,9 @@ def main():
     logging.info('ngpu = %d', ngpu)
     gpus = list(range(ngpu))
 
-    np.random.seed(args.seed)
+    set_seed(args.seed)
     cudnn.benchmark = True
-    torch.manual_seed(args.seed)
     cudnn.enabled = True
-    torch.cuda.manual_seed(args.seed)
     logging.info('gpu devices = %s' % gpus)
     logging.info("args = %s", args)
 
@@ -135,10 +152,12 @@ def main():
     for sp in range(len(num_to_keep)):
         model = Network(args.init_channels + int(add_width[sp]), CIFAR_CLASSES, args.layers + int(
             add_layers[sp]), criterion, switches_normal=switches_normal, switches_reduce=switches_reduce,
-                        p=float(drop_rate[sp]))
-        model = nn.DataParallel(model)
-        model = model.cuda()
-        model_rw = copy.deepcopy(model)
+                        p=float(drop_rate[sp]), shared_a=None)
+        model.cuda()
+        model_rw = Network(args.init_channels + int(add_width[sp]), CIFAR_CLASSES, args.layers + int(
+            add_layers[sp]), criterion, switches_normal=switches_normal, switches_reduce=switches_reduce,
+                        p=float(drop_rate[sp]), shared_a=model.arch_parameters())
+        model_rw.cuda()
         model_beta = LinearCombination(args.model_beta).cuda()
         logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
         network_params = []
@@ -154,11 +173,12 @@ def main():
                                     momentum=args.momentum, weight_decay=args.weight_decay)
         optimizer_rw = torch.optim.SGD(network_params_rw, args.learning_rate,
                                        momentum=args.momentum, weight_decay=args.weight_decay)
-        optimizer_a = torch.optim.Adam(model.module.arch_parameters(), lr=args.arch_learning_rate, betas=(0.5, 0.999),
+        optimizer_a = torch.optim.Adam(model.arch_parameters(), lr=args.arch_learning_rate, betas=(0.5, 0.999),
                                        weight_decay=args.arch_weight_decay)
-        optimizer_a_rw = torch.optim.Adam(model_rw.module.arch_parameters(), lr=args.arch_learning_rate, betas=(0.5, 0.999),
-                                          weight_decay=args.arch_weight_decay)
-        optimizer_beta = torch.optim.Adam(model_beta.parameters(), lr=args.learning_rate_beta, betas=(0.5, 0.999))
+        if args.model_beta == -1:
+            optimizer_beta = torch.optim.Adam(model_beta.parameters(), lr=args.learning_rate_beta, betas=(0.5, 0.999))
+        else:
+            optimizer_beta = None
 
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs), eta_min=args.learning_rate_min)
         scheduler_rw = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_rw, float(args.epochs), eta_min=args.learning_rate_min)
@@ -171,23 +191,30 @@ def main():
             lr = scheduler.get_last_lr()[0]
             lr_rw = scheduler_rw.get_last_lr()[0]
             logging.info('Epoch: %d lr: %e lr_rw: %e', epoch, lr, lr_rw)
+            logging.info('beta = %f', model_beta.beta)
             epoch_start = time.time()
             # training
             if epoch < eps_no_arch:
-                model.module.p = float(
-                    drop_rate[sp]) * (epochs - epoch - 1) / epochs
-                model.module.update_p()
+                if ngpu > 1:
+                    model.module.p = float(drop_rate[sp]) * (epochs - epoch - 1) / epochs
+                    model.module.update_p()
+                else:
+                    model.p = float(drop_rate[sp]) * (epochs - epoch - 1) / epochs
+                    model.update_p()
                 train_acc, train_obj = train(
                     train_queue, valid_queue, model, model_rw, model_beta, network_params, network_params_rw,
-                    criterion, optimizer, optimizer_a, optimizer_rw, optimizer_a_rw, optimizer_beta, lr, lr_rw,
+                    criterion, optimizer, optimizer_a, optimizer_rw, optimizer_beta, lr, lr_rw,
                     train_arch=False)
             else:
-                model.module.p = float(
-                    drop_rate[sp]) * np.exp(-(epoch - eps_no_arch) * scale_factor)
-                model.module.update_p()
+                if ngpu > 1:
+                    model.module.p = float(drop_rate[sp]) * np.exp(-(epoch - eps_no_arch) * scale_factor)
+                    model.module.update_p()
+                else:
+                    model.p = float(drop_rate[sp]) * np.exp(-(epoch - eps_no_arch) * scale_factor)
+                    model.update_p()
                 train_acc, train_obj = train(
                     train_queue, valid_queue, model, model_rw, model_beta, network_params, network_params_rw,
-                    criterion, optimizer, optimizer_a, optimizer_rw, optimizer_a_rw, optimizer_beta, lr, lr_rw,
+                    criterion, optimizer, optimizer_a, optimizer_rw, optimizer_beta, lr, lr_rw,
                     train_arch=True)
             logging.info('Train_acc %f', train_acc)
             epoch_duration = time.time() - epoch_start
@@ -207,7 +234,7 @@ def main():
             switches_normal_2 = copy.deepcopy(switches_normal)
             switches_reduce_2 = copy.deepcopy(switches_reduce)
         # drop operations with low architecture weights
-        arch_param = model.module.arch_parameters()
+        arch_param = model.arch_parameters() if ngpu > 1 else model.arch_parameters()
         normal_prob = F.softmax(arch_param[0], dim=sm_dim).data.cpu().numpy()
         for i in range(14):
             idxs = []
@@ -241,7 +268,7 @@ def main():
         logging_switches(switches_reduce)
 
         if sp == len(num_to_keep) - 1:
-            arch_param = model.module.arch_parameters()
+            arch_param = model.arch_parameters() if ngpu > 1 else model.arch_parameters()
             normal_prob = F.softmax(
                 arch_param[0], dim=sm_dim).data.cpu().numpy()
             reduce_prob = F.softmax(
@@ -306,7 +333,7 @@ def main():
 
 def train(train_queue, valid_queue, model, model_rw, model_beta,
           network_params, network_params_rw, criterion,
-          optimizer, optimizer_a, optimizer_rw, optimizer_a_rw, optimizer_beta,
+          optimizer, optimizer_a, optimizer_rw, optimizer_beta,
           lr, lr_rw, train_arch=True):
     objs = utils.AvgrageMeter()
     objr = utils.AvgrageMeter()
@@ -316,65 +343,48 @@ def train(train_queue, valid_queue, model, model_rw, model_beta,
     for step, (input, target) in enumerate(train_queue):
         model.train()
         n = input.size(0)
-        input = input.cuda()
+        input = input.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
         if train_arch:
-            # In the original implementation of DARTS, it is input_search, target_search = next(iter(valid_queue), which slows down
-            # the training when using PyTorch 0.4 and above.
+            # In the original implementation of DARTS, it is input_search, target_search = next(iter(valid_queue),
+            # which slows down the training when using PyTorch 0.4 and above.
             try:
                 input_search, target_search = next(valid_queue_iter)
             except:
                 valid_queue_iter = iter(valid_queue)
                 input_search, target_search = next(valid_queue_iter)
-            input_search = input_search.cuda()
+            input_search = input_search.cuda(non_blocking=True)
             target_search = target_search.cuda(non_blocking=True)
 
+            # update A, beta
             optimizer_a.zero_grad()
-            optimizer_a_rw.zero_grad()
-            optimizer_beta.zero_grad()
+            if optimizer_beta is not None:
+                optimizer_beta.zero_grad()
 
             logits = model(input_search)
             logits_rw = model_rw(input_search)
             output = model_beta(logits, logits_rw)
-            valid_loss = F.cross_entropy(output, target_search)
+            valid_loss = criterion(output, target_search)
             valid_loss.backward()
 
-            nn.utils.clip_grad_norm_(
-                model.module.arch_parameters(), args.grad_clip)
-            nn.utils.clip_grad_norm_(
-                model_rw.module.arch_parameters(), args.grad_clip)
-
-            dalpha = [v.grad for v in model.module.arch_parameters()]
-            dalpha_rw = [v.grad for v in model_rw.module.arch_parameters()]
-            for g, g_rw in zip(dalpha, dalpha_rw):
-                g.data.add_(g_rw)
-            for v, g in zip(model.module.arch_parameters(), dalpha):
-                if v.grad is None:
-                    v.grad = Variable(g.data)
-                else:
-                    v.grad.data.copy_(g.data)
-
+            nn.utils.clip_grad_norm_(model.arch_parameters(), args.grad_clip)
             optimizer_a.step()
-            optimizer_a_rw.step()
-            optimizer_beta.step()
-            # sync architectures
-            for v, v_rw in zip(model.module.arch_parameters(), model_rw.module.arch_parameters()):
-                v_rw.data.copy_(v.data)
+            if optimizer_beta is not None:
+                optimizer_beta.step()
 
+        # update w1
         optimizer.zero_grad()
-        logits = model(input)
-        loss = criterion(logits, target)
+        loss = criterion(model(input), target)
         loss.backward()
         nn.utils.clip_grad_norm_(network_params, args.grad_clip)
         optimizer.step()
-
-        # Update the second model parameters using reweighted loss function
+        # update w2
         optimizer_rw.zero_grad()
-        with torch.no_grad():
+        with torch.no_grad(): # weights are not to be computed gradients over
             logits = model(input)
             weights = F.cross_entropy(logits, target, reduction='none')
             weights = weights / weights.sum()
-        logits_rw = reweighted_model(input)
+        logits_rw = model_rw(input)
         loss_rw = F.cross_entropy(logits_rw, target, reduction='none')
         loss_rw = torch.dot(loss_rw, weights)
         loss_rw.backward()
@@ -387,8 +397,9 @@ def train(train_queue, valid_queue, model, model_rw, model_beta,
         top5.update(prec5.data.item(), n)
 
         if step % args.report_freq == 0:
-            logging.info('TRAIN Step: %03d Objs: %e R1: %f R5: %f',
-                         step, objs.avg, top1.avg, top5.avg)
+            logging.info('train %03d loss %e top1 %f top5 %f', step, objs.avg, top1.avg, top5.avg)
+        if args.debug:
+            break
 
     return top1.avg, objs.avg
 
@@ -398,8 +409,9 @@ def infer(valid_queue, model, reweighted_model, model_beta, criterion):
     top1 = utils.AvgrageMeter()
     top5 = utils.AvgrageMeter()
     model.eval()
+
     for step, (input, target) in enumerate(valid_queue):
-        input = input.cuda()
+        input = input.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
         logits = model(input)
@@ -414,7 +426,9 @@ def infer(valid_queue, model, reweighted_model, model_beta, criterion):
         top5.update(prec5.item(), n)
 
         if step % args.report_freq == 0:
-            logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+            logging.info('valid %03d loss %e top1 %f top5 %f', step, objs.avg, top1.avg, top5.avg)
+        if args.debug:
+            break
 
     return top1.avg, objs.avg
 

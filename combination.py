@@ -7,14 +7,14 @@ import torch.nn.functional as F
 class LinearCombination(nn.Module):
     beta: torch.Tensor
 
-    def __init__(self, beta):
+    def __init__(self, model_beta):
         super(LinearCombination, self).__init__()
         # Sampling beta uniformly from [0.45, 0.55]
-        if beta == -1:
-            b = 0.1 * torch.rand([1]) + torch.tensor([0.45])
+        if model_beta == -1:
+            # self.beta = Parameter(0.1 * torch.rand([1]) + torch.tensor([0.45]))
+            self.beta = Parameter(torch.tensor(0.5))
         else:
-            b = torch.tensor(beta)
-        self.beta = Parameter(b)
+            self.beta = model_beta
 
     def forward(self, x1, x2):
         return self.beta * x1 + (1 - self.beta) * x2

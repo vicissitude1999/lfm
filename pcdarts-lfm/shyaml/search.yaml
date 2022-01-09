@@ -16,19 +16,19 @@ spec:
         - name: research
           image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
           imagePullPolicy: Always
-          workingDir: /renyi-volume/LFM/pcdarts-lfm
-          command: [ "bash", "search.sh" ]
+          workingDir: /renyi-volume/LFM/pcdarts-lfm/shyaml
+          command: ["bash", "search.sh"]
           resources:
             requests:
               memory: "4Gi"
               cpu: "4"
               nvidia.com/gpu: 1
-              ephemeral-storage: 5Gi
+              ephemeral-storage: 2Gi
             limits:
               memory: "8Gi"
               cpu: "8"
               nvidia.com/gpu: 1
-              ephemeral-storage: 10Gi
+              ephemeral-storage: 2Gi
           volumeMounts:
             - mountPath: /renyi-volume
               name: renyi-volume

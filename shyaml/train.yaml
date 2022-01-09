@@ -17,18 +17,18 @@ spec:
           image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
           imagePullPolicy: Always
           workingDir: /renyi-volume/LFM/shyaml
-          command: ["bash", "train.sh"]
+          command: ["bash", "train6.sh"]
           resources:
             requests:
               memory: "2Gi"
               cpu: "4"
               nvidia.com/gpu: 1
-              ephemeral-storage: 5Gi
+              ephemeral-storage: 2Gi
             limits:
               memory: "4Gi"
               cpu: "4"
               nvidia.com/gpu: 1
-              ephemeral-storage: 10Gi
+              ephemeral-storage: 4Gi
           volumeMounts:
             - mountPath: /renyi-volume
               name: renyi-volume
