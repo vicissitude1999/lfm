@@ -62,7 +62,7 @@ parser.add_argument('--add_layers', action='append', default=['0'], help='add la
 args = parser.parse_args()
 
 args.method = 'pdarts-lfm'
-dirs = ['../runs', '../runs_trash']
+dirs = ['../../runs', '../../runs_trash']
 for d in dirs:
     os.makedirs(os.path.join(d, args.method), exist_ok=True)
 if not args.resume:
