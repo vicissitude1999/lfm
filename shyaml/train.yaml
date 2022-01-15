@@ -1,57 +1,46 @@
 apiVersion: batch/v1
-kind: Job # Deployment will automatically restart when killed. Use Pod if not needed
+kind: Job
 metadata:
-  labels:
-    k8s-app: research
-  generateName: renyi-eval-
-  namespace: ecepxie
+  name: renyi-{}
 spec:
   template:
-    metadata:
-      labels:
-        k8s-app: research
     spec:
-      restartPolicy: Never
       containers:
-        - name: research
-          image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
-          imagePullPolicy: Always
-          workingDir: /renyi-volume/LFM/shyaml
-          command: ["bash", "train6.sh"]
-          resources:
-            requests:
-              memory: "2Gi"
-              cpu: "4"
-              nvidia.com/gpu: 1
-              ephemeral-storage: 2Gi
-            limits:
-              memory: "4Gi"
-              cpu: "4"
-              nvidia.com/gpu: 1
-              ephemeral-storage: 4Gi
-          volumeMounts:
-            - mountPath: /renyi-volume
-              name: renyi-volume
-            - mountPath: /dev/shm
-              name: dshm
+      - name: pytorch-container
+        image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+        workingDir: /renyi-volume/lfm/shyaml
+        command: ["bash", "train-{}.sh"]
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "4Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - name: renyi-volume
+          mountPath: /renyi-volume
+
+      restartPolicy: Never
+
       volumes:
         - name: renyi-volume
           persistentVolumeClaim:
             claimName: renyi-volume
-        - name: data
-          emptyDir: { }
-        - name: dshm
-          emptyDir:
-            medium: Memory
-      nodeSelector:
-        gpu-type: "2080Ti"
-        nautilus.io/disktype: nvme
-        # affinity:
-        #   nodeAffinity:
-        #     requiredDuringSchedulingIgnoredDuringExecution:
-        #       nodeSelectorTerms:
-        #       - matchExpressions:
-        #         - key: gpu-type
-        #           operator: In # Use NotIn for other types
-        #           values:
-        #           - 2080Ti
+
+      affinity:
+         nodeAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+             nodeSelectorTerms:
+             - matchExpressions:
+               - key: gpu-type
+                 operator: In
+                 values:
+                   - 2080Ti
+               - key: topology.kubernetes.io/region
+                 operator: In
+                 values:
+                   - us-west
+  backoffLimit: 1

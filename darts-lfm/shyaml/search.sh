@@ -16,10 +16,4 @@ nvidia-smi
 cd ..
 # run each search with three different random seeds
 
-#python search.py --set cifar100 --batch_size 36 --seed 1 --model_beta -1
-python search.py --set cifar100 --batch_size 36 --seed 2 --model_beta -1 --debug
-#python search.py --set cifar100 --batch_size 36 --seed 3 --model_beta -1
-
-#python search.py --set cifar10 --batch_size 36 --seed 1 --model_beta -1
-#python search.py --set cifar10 --batch_size 36 --seed 2 --model_beta -1
-#python search.py --set cifar10 --batch_size 36 --seed 3 --model_beta -1
+python search.py --set {} --batch_size 36 --seed {} --model_beta -1

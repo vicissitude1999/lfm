@@ -50,15 +50,15 @@ args = parser.parse_args()
 if args.method not in ['darts', 'darts-lfm']:
     args.drop_path_prob = 0.3
 
-dirs = ['runs', 'runs_trash']
+dirs = ['../runs', '../runs_trash']
 for d in dirs:
     os.makedirs(os.path.join(d, args.method), exist_ok=True)
+save_directory = dirs[1] if args.debug else dirs[0]
 if not args.resume:
-    run = dirs[1] if args.debug else dirs[0]
-    args.save = os.path.join(run, args.method, 'eval-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
+    args.save = os.path.join(save_directory, args.method, 'eval-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
     utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 else:
-    args.save = os.path.join('runs', args.method, args.resume_dir)
+    args.save = os.path.join(save_directory, args.method, args.resume_dir)
 
 # logging
 log_format = '%(asctime)s %(message)s'
@@ -90,12 +90,12 @@ def main():
     ngpu = torch.cuda.device_count()
     logging.info('ngpu = %d', ngpu)
     gpus = list(range(ngpu))
+    logging.info('gpu devices = %s' % gpus)
+    logging.info("args = %s", args)
 
     set_seed(args.seed)
     cudnn.benchmark = True
     cudnn.enabled = True
-    logging.info('gpu devices = %s' % gpus)
-    logging.info("args = %s", args)
 
     genotype = eval("genotypes.%s" % args.arch)
     print('---------Genotype---------')
@@ -108,8 +108,7 @@ def main():
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
-    criterion = nn.CrossEntropyLoss()
-    criterion = criterion.cuda()
+    criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(
         model.parameters(),
         args.learning_rate,
@@ -130,18 +129,17 @@ def main():
         valid_data, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=args.num_workers)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs))
-    start_epoch = -1
+    best_acc = 0.0
+    is_best = False
+    start_epoch = 0
     if args.resume:
         checkpoint = torch.load(os.path.join(args.save, 'checkpoint.pth.tar'))
-        start_epoch = checkpoint['epoch']
+        start_epoch = checkpoint['epoch'] + 1
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
 
-    best_acc = 0.0
-    is_best = False
-
-    for epoch in range(start_epoch + 1, args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         start_time = time.time()
 
         logging.info('epoch %d lr %e', epoch, scheduler.get_last_lr()[0])
@@ -169,8 +167,6 @@ def main():
             'state_dict': model.state_dict(),
             'scheduler': scheduler.state_dict(),
             'optimizer': optimizer.state_dict()}, is_best, args.save)
-        if args.debug and epoch - start_epoch > 3:
-            break
 
         end_time = time.time()
         duration = end_time - start_time
@@ -207,7 +203,7 @@ def train(train_queue, model, criterion, optimizer, epoch):
             logging.info('train %03d loss %e top1 %f top5 %f', step, objs.avg, top1.avg, top5.avg)
             writer.add_scalar('LossBatch/train', objs.avg, epoch*len(train_queue) + step)
             writer.add_scalar('AccuBatch/train', top1.avg, epoch*len(train_queue) + step)
-        if args.debug:
+        if step % args.report_freq == 0 and args.debug:
             break
 
     writer.add_scalar('LossEpoch/train', objs.avg, epoch)
@@ -239,7 +235,7 @@ def infer(valid_queue, model, criterion, epoch):
             logging.info('valid %03d loss %e top1 %f top5 %f', step, objs.avg, top1.avg, top5.avg)
             writer.add_scalar('LossBatch/valid', objs.avg, epoch * len(valid_queue) + step)
             writer.add_scalar('AccuBatch/valid', top1.avg, epoch * len(valid_queue) + step)
-        if args.debug:
+        if step % args.report_freq == 0 and args.debug:
             break
 
         writer.add_scalar('LossEpoch/valid', objs.avg, epoch)
@@ -249,8 +245,4 @@ def infer(valid_queue, model, criterion, epoch):
 
 
 if __name__ == '__main__':
-    start_time = time.time()
     main()
-    end_time = time.time()
-    duration = end_time - start_time
-    logging.info('Eval time: %ds.', duration)

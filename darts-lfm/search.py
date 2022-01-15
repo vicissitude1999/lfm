@@ -43,14 +43,14 @@ parser.add_argument('--layers', type=int, default=8, help='total number of layer
 parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
 parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
 parser.add_argument('--drop_path_prob', type=float, default=0.3, help='drop path probability')
-parser.add_argument('--model_beta', type=float, help='fixed beta value, or unif[0.45, 0.55] (denoted -1)', default=-1)
+parser.add_argument('--model_beta', type=float, help='fixed beta value, or 0.5 (denoted -1)', default=-1)
 # optimization related
 parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate') # lr of w1, w2
 parser.add_argument('--learning_rate_min', type=float, default=0.001, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding') # lr of A
-parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
+parser.add_argument('--arch_weight_decay', type=float , default=1e-3, help='weight decay for arch encoding')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 parser.add_argument('--learning_rate_beta', type=float, default=2e-4) # lr of beta
 

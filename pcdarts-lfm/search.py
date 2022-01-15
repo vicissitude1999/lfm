@@ -5,6 +5,7 @@ import time
 import glob
 import logging
 import argparse
+import random
 
 import numpy as np
 import torch
@@ -21,37 +22,37 @@ from architect import Architect
 from combination import LinearCombination
 
 parser = argparse.ArgumentParser("cifar")
+# general arguments
 parser.add_argument('--data', type=str, default='../../data', help='location of the data corpus')
-parser.add_argument('--set', type=str, default='cifar10', help='location of the data corpus')
+parser.add_argument('--set', type=str, default='cifar10', help='cifar 10 or 100')
+parser.add_argument('--train_portion', type=float, default=0.5, help='portion of training data')
+parser.add_argument('--save', type=str, default='EXP', help='experiment name')
+parser.add_argument('--gpu', type=str, default='0', help='gpu device id')
+parser.add_argument('--seed', type=int, default=2, help='random seed')
+parser.add_argument('--epochs', type=int, default=50, help='num of training epochs')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
+parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
+parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--resume', type=bool, default=False)
+parser.add_argument('--resume_dir', type=str)
+parser.add_argument('--debug', action='store_true', default=False) # debug mode to check if the code can run
+# model related
+parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
+parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
+parser.add_argument('--layers', type=int, default=8, help='total number of layers')
+parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
+parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
+parser.add_argument('--drop_path_prob', type=float, default=0.3, help='drop path probability')
+parser.add_argument('--model_beta', type=float, help='fixed beta value, or 0.5 (denoted -1)', default=-1)
+# optimization related
 parser.add_argument('--learning_rate', type=float, default=0.1, help='init learning rate')
 parser.add_argument('--learning_rate_min', type=float, default=0.0, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
-parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
-parser.add_argument('--gpu', type=str, default='0', help='gpu device id')
-parser.add_argument('--epochs', type=int, default=50, help='num of training epochs')
-parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
-parser.add_argument('--layers', type=int, default=8, help='total number of layers')
-parser.add_argument('--model_path', type=str, default='saved_models', help='path to save the model')
-parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
-parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
-parser.add_argument('--drop_path_prob', type=float, default=0.3, help='drop path probability')
-parser.add_argument('--save', type=str, default='EXP', help='experiment name')
-parser.add_argument('--seed', type=int, default=2, help='random seed')
-parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
-parser.add_argument('--train_portion', type=float, default=0.5, help='portion of training data')
-parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
-parser.add_argument('--arch_learning_rate', type=float, default=6e-4, help='learning rate for arch encoding')
+parser.add_argument('--arch_learning_rate', type=float, default=6e-4, help='learning rate for arch encoding') # lr of A
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
-
-# New hyperparameters
-parser.add_argument('--num_workers', type=int, default=4)
-parser.add_argument('--learning_rate_beta', type=float, default=2e-3)
-parser.add_argument('--model_beta', type=float, help='fixed beta value, or unif[0.45, 0.55] (denoted -1)', default=-1)
-parser.add_argument('--resume', type=bool, default=False)
-parser.add_argument('--resume_dir', type=str)
-parser.add_argument('--debug', action='store_true', default=False)
+parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
+parser.add_argument('--learning_rate_beta', type=float, default=2e-4) # lr of beta
 
 args = parser.parse_args()
 
@@ -59,12 +60,12 @@ args.method = 'pcdarts-lfm'
 dirs = ['../../runs', '../../runs_trash']
 for d in dirs:
     os.makedirs(os.path.join(d, args.method), exist_ok=True)
+save_directory = dirs[1] if args.debug else dirs[0]
 if not args.resume:
-    run = dirs[1] if args.debug else dirs[0]
-    args.save = os.path.join(run, args.method, 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
+    args.save = os.path.join(save_directory, args.method, 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S")))
     utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 else:
-    args.save = os.path.join(dirs[0], args.method, args.resume_dir)
+    args.save = os.path.join(save_directory, args.method, args.resume_dir)
 
 # logging
 log_format = '%(asctime)s %(message)s'
@@ -80,6 +81,13 @@ CIFAR_CLASSES = 10
 if args.set == 'cifar100':
     CIFAR_CLASSES = 100
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
 
 def main():
     if not torch.cuda.is_available():
@@ -88,17 +96,14 @@ def main():
     ngpu = torch.cuda.device_count()
     logging.info('ngpu = %d', ngpu)
     gpus = list(range(ngpu))
-
-    np.random.seed(args.seed)
-    cudnn.benchmark = True
-    torch.manual_seed(args.seed)
-    cudnn.enabled = True
-    torch.cuda.manual_seed(args.seed)
     logging.info('gpu devices = %s' % gpus)
     logging.info("args = %s", args)
 
-    criterion = nn.CrossEntropyLoss()
-    criterion = criterion.cuda()
+    set_seed(args.seed)
+    cudnn.benchmark = True
+    cudnn.enabled = True
+
+    criterion = nn.CrossEntropyLoss().cuda()
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion)
     reweighted_model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion, shared_a=model.arch_parameters())
     model = model.cuda()
@@ -241,7 +246,7 @@ def train(train_queue, valid_queue, model, reweighted_model, architect, criterio
         writer.add_scalar('LossEpoch/train', objs.avg, epoch)
         writer.add_scalar('LossRWEpoch/train', objr.avg, epoch)
         writer.add_scalar('AccuEpoch/train', top1.avg, epoch)
-        if args.debug:
+        if step % args.report_freq == 0 and args.debug:
             break
 
     return top1.avg, objs.avg, objr.avg
@@ -274,7 +279,7 @@ def infer(valid_queue, model, reweighted_model, model_beta, criterion, epoch):
 
         writer.add_scalar('LossEpoch/valid', objs.avg, epoch)
         writer.add_scalar('AccuEpoch/valid', top1.avg, epoch)
-        if args.debug:
+        if step % args.report_freq == 0 and args.debug:
             break
 
     return top1.avg, objs.avg
