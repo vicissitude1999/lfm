@@ -126,8 +126,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# tmp
-tmp.txt
-
+*.yaml
+*.yml
 tools/
 outputs/

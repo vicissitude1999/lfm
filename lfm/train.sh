@@ -13,10 +13,10 @@
 # 11g vram, 1080Ti or 2080Ti
 
 python train.py \
---method darts-lfm \
+--method pcdarts-lfm \
 --set cifar100 \
---save ../outputs/darts-lfm/cifar100_on_cifar100/EVAL \
---batch_size 90 \
---arch darts_lfm_cifar100_3 \
+--save ../outputs/pcdarts-lfm/cifar100_on_cifar100/EVAL \
+--batch_size 96 \
+--arch PCDARTS_CIFAR100_LFM_F3 \
 --auxiliary \
 --cutout

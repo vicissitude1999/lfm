@@ -22,6 +22,6 @@ conda env create --prefix /renyi-volume/env_darts -f env_darts.yaml
 # create environment from file, without specifying name in yaml
 conda env create -f env_darts.yaml --name env_darts
 
-kubectl cp /home/renyi/projects/lfmlib ecepxie/renyi-login:/renyi-volume/
+kubectl cp /home/renyi/projects/lfmlib/lfm ecepxie/renyi-login:/renyi-volume/lfmlib
 
 kubectl get nodes -L nvidia.com/gpu.product
