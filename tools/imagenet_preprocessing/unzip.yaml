@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job # Deployment will automatically restart when killed. Use Pod if not needed
+metadata:
+  labels:
+    k8s-app: research
+  generateName: renyi-imagenet-
+  namespace: ecepxie
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: research
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: research
+        image: gitlab-registry.nrp-nautilus.io/vamsirk/research-containers
+        imagePullPolicy: Always
+        workingDir: /renyi-volume/LFM/scripts/imagenet
+        command: ["bash", "unzip.sh"]
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "4"
+          limits:
+            memory: "4Gi"
+            cpu: "4"
+        volumeMounts:
+        - mountPath: /renyi-volume
+          name: renyi-volume
+        - mountPath: /dev/shm
+          name: dshm
+      volumes:
+        - name: renyi-volume
+          persistentVolumeClaim:
+            claimName: renyi-volume
+        - name: data
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory

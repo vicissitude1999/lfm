@@ -1,0 +1,45 @@
+# first time pulling the image will take a few hours
+# the next times will be fast
+apiVersion: v1
+kind: Pod
+metadata:
+  name: renyi-gpu
+spec:
+  containers:
+  - name: gpu-container
+    image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+    command: [ "/bin/bash" ]
+    args: [ "-c", "sleep infinity" ]
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "2"
+        nvidia.com/gpu: 2
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+        nvidia.com/gpu: 2
+    volumeMounts:
+    - name: renyi-volume
+      mountPath: /renyi-volume
+
+  restartPolicy: Never
+
+  volumes:
+    - name: renyi-volume
+      persistentVolumeClaim:
+        claimName: renyi-volume
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: nvidia.com/gpu.product
+            operator: In
+            values:
+              - NVIDIA-GeForce-GTX-1080-Ti
+          - key: topology.kubernetes.io/region
+            operator: In
+            values:
+              - us-west

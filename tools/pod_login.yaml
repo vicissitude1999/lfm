@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: renyi-login
+spec:
+  containers:
+  - name: vol-container
+    image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+    command: ["/bin/bash"]
+    args: ["-c", "sleep infinity"]
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "2"
+      limits:
+        memory: "1Gi"
+        cpu: "2"
+    volumeMounts:
+    - name: renyi-volume
+      mountPath: /renyi-volume
+
+  restartPolicy: Never
+
+  volumes:
+    - name: renyi-volume
+      persistentVolumeClaim:
+        claimName: renyi-volume
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/region
+              operator: In
+              values:
+                - us-west
