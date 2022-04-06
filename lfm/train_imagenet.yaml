@@ -1,24 +1,24 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: renyi-{}
+  name: renyi-imagenet
 spec:
   template:
     spec:
       containers:
       - name: pytorch-container
         image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
-        workingDir: /renyi-volume/lfm/shyaml
-        command: ["bash", "train-{}.sh"]
+        workingDir: /renyi-volume/lfmlib/lfm/darts-lfm/shyaml
+        command: ["bash", "train_imagenet.sh"]
         resources:
           requests:
             memory: "4Gi"
             cpu: "4"
-            nvidia.com/gpu: 1
+            nvidia.com/gpu: 2
           limits:
             memory: "4Gi"
             cpu: "4"
-            nvidia.com/gpu: 1
+            nvidia.com/gpu: 2
         volumeMounts:
         - name: renyi-volume
           mountPath: /renyi-volume
@@ -38,7 +38,7 @@ spec:
                - key: gpu-type
                  operator: In
                  values:
-                   - 2080Ti
+                   - 1080Ti
                - key: topology.kubernetes.io/region
                  operator: In
                  values:

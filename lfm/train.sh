@@ -12,8 +12,11 @@
 
 # 11g vram, 1080Ti or 2080Ti
 
-nvidia-smi
-cd ..
-# run each search with three different random seeds
-
-python search.py --set {} --batch_size 36 --seed {} --model_beta -1
+python train.py \
+--method darts-lfm \
+--set cifar100 \
+--save ../outputs/darts-lfm/cifar100_on_cifar100/EVAL \
+--batch_size 90 \
+--arch darts_lfm_cifar100_3 \
+--auxiliary \
+--cutout

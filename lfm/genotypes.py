@@ -13,139 +13,72 @@ PRIMITIVES = [
     'dil_conv_5x5'
 ]
 
-arch_names = {'darts_lfm_cifar100_seed1_1':96, 'darts_lfm_cifar10_seed1_1':96, 'darts_lfm_cifar100_seed1_2':96,
-              'darts_lfm_cifar100_seed2':180, 'darts_lfm_cifar100_seed3':110, 'darts_lfm_cifar10_seed1_2':85,
-              'darts_lfm_cifar10_seed2':85, 'darts_lfm_cifar10_seed3':85}
-# darts-lfm
-# cifar100 seed 1
-darts_lfm_cifar100_seed1_1 = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0),
-            ('sep_conv_3x3', 1), ('skip_connect', 1), ('skip_connect', 0)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_3x3', 1), ('skip_connect', 0), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('sep_conv_3x3', 3),
-            ('max_pool_3x3', 1), ('sep_conv_3x3', 0), ('skip_connect', 2)], reduce_concat=range(2, 6))
-# 2022-01-10 12:33:57,197 beta = 0.615798
+PDARTS_TS_CIFAR100_GAMMA_2 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 2), ('skip_connect', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 0), ('avg_pool_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 2), ('avg_pool_3x3', 0), ('sep_conv_5x5', 2), ('avg_pool_3x3', 0), ('sep_conv_5x5', 4)], reduce_concat=range(2, 6))
+PDARTS_TS_CIFAR100_GAMMA_3 = Genotype(normal=[('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_5x5', 2), ('sep_conv_3x3', 0), ('dil_conv_5x5', 1)], normal_concat=range(2, 6), reduce=[('skip_connect', 0), ('max_pool_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 3), ('dil_conv_3x3', 3), ('dil_conv_3x3', 4)], reduce_concat=range(2, 6))
+PDARTS_TS_CIFAR100_GAMMA_0_1 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_3x3', 2), ('skip_connect', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('dil_conv_3x3', 3)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 0), ('dil_conv_5x5', 1), ('avg_pool_3x3', 0), ('sep_conv_3x3', 2), ('dil_conv_5x5', 2), ('dil_conv_3x3', 3), ('avg_pool_3x3', 0), ('sep_conv_5x5', 2)], reduce_concat=range(2, 6))
+PDARTS_TS_CIFAR100_GAMMA_0_5 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('skip_connect', 2), ('sep_conv_3x3', 1), ('sep_conv_5x5', 4)], normal_concat=range(2, 6), reduce=[('sep_conv_3x3', 0), ('skip_connect', 1), ('avg_pool_3x3', 0), ('sep_conv_3x3', 2), ('avg_pool_3x3', 0), ('sep_conv_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 2)], reduce_concat=range(2, 6))
 
-# cifar10 seed 1
-darts_lfm_cifar10_seed1_1 = Genotype(
-    normal=[('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('skip_connect', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 0),
-            ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('skip_connect', 1)], normal_concat=range(2, 6),
-    reduce=[('skip_connect', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 2), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1),
-            ('dil_conv_5x5', 3), ('skip_connect', 0), ('dil_conv_3x3', 2)], reduce_concat=range(2, 6))
-# 2022-01-10 16:00:58,648 beta = 0.469700
+DARTS_TS_18_CIFAR10_GAMMA_0_5 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('skip_connect', 1), ('skip_connect', 2), ('max_pool_3x3', 0), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 2), ('max_pool_3x3', 0)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_GAMMA_0_1 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 1), ('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 2), ('avg_pool_3x3', 0)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_GAMMA_2 = Genotype(normal=[('skip_connect', 0), ('sep_conv_5x5', 1), ('skip_connect', 0), ('skip_connect', 1), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 0), ('avg_pool_3x3', 1), ('skip_connect', 2), ('avg_pool_3x3', 0), ('skip_connect', 2), ('avg_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 3)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_GAMMA_3 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 1), ('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('dil_conv_5x5', 1)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 1), ('avg_pool_3x3', 0), ('skip_connect', 2), ('avg_pool_3x3', 1), ('skip_connect', 2), ('avg_pool_3x3', 0), ('skip_connect', 2), ('avg_pool_3x3', 0)], reduce_concat=range(2, 6))
 
-# cifar100 seed 1
-darts_lfm_cifar100_seed1_2 = genotype = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1),
-            ('skip_connect', 0), ('skip_connect', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_3x3', 0), ('max_pool_3x3', 1), ('dil_conv_5x5', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 3),
-            ('sep_conv_3x3', 0), ('skip_connect', 2), ('sep_conv_3x3', 0)], reduce_concat=range(2, 6))
-# 2022-01-10 10:24:35,008 beta = 0.606188
+DARTS_TS_18_CIFAR10_LAMBDA_2 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('skip_connect', 0), ('avg_pool_3x3', 1), ('skip_connect', 2), ('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('skip_connect', 2), ('skip_connect', 2), ('skip_connect', 3)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_LAMBDA_0_1 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 1), ('avg_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 3), ('skip_connect', 2), ('avg_pool_3x3', 0)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_LAMBDA_0_5 = Genotype(normal=[('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('skip_connect', 0), ('dil_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('dil_conv_3x3', 1), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 3), ('skip_connect', 3), ('skip_connect', 2)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_LAMBDA_3 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('dil_conv_5x5', 1), ('skip_connect', 2), ('avg_pool_3x3', 0), ('avg_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 2), ('avg_pool_3x3', 0)], reduce_concat=range(2, 6))
 
-# cifar100 seed 2
-darts_lfm_cifar100_seed2 = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('skip_connect', 1), ('skip_connect', 0), ('skip_connect', 1),
-            ('skip_connect', 0), ('skip_connect', 1), ('skip_connect', 0)], normal_concat=range(2, 6),
-    reduce=[('avg_pool_3x3', 0), ('skip_connect', 1), ('avg_pool_3x3', 0), ('skip_connect', 2), ('avg_pool_3x3', 0),
-            ('skip_connect', 1), ('avg_pool_3x3', 0), ('skip_connect', 2)], reduce_concat=range(2, 6))
-# 2022-01-10 10:12:37,573 beta = 0.592627
-
-# cifar100 seed 3
-darts_lfm_cifar100_seed3 = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 0),
-            ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('skip_connect', 0)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_5x5', 2), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1),
-            ('max_pool_3x3', 0), ('max_pool_3x3', 0), ('max_pool_3x3', 1)], reduce_concat=range(2, 6))
-# 2022-01-10 10:25:23,808 beta = 0.589860
-
-# cifar10 seed 1
-darts_lfm_cifar10_seed1_2 = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0),
-            ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('max_pool_3x3', 2)], normal_concat=range(2, 6),
-    reduce=[('max_pool_3x3', 0), ('skip_connect', 1), ('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 3),
-            ('dil_conv_5x5', 2), ('dil_conv_3x3', 1), ('sep_conv_3x3', 3)], reduce_concat=range(2, 6))
-# 2022-01-10 10:32:37,474 beta = 0.464103
-
-# cifar10 seed 2
-darts_lfm_cifar10_seed2 = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1),
-            ('sep_conv_3x3', 3), ('dil_conv_5x5', 2), ('sep_conv_5x5', 1)], normal_concat=range(2, 6),
-    reduce=[('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1),
-            ('sep_conv_5x5', 2), ('dil_conv_5x5', 2), ('dil_conv_3x3', 1)], reduce_concat=range(2, 6))
-# 2022-01-10 09:52:08,845 beta = 0.460839
-
-# cifar10 seed 3
-darts_lfm_cifar10_seed3 = genotype = Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1),
-            ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('max_pool_3x3', 2)], normal_concat=range(2, 6),
-    reduce=[('max_pool_3x3', 0), ('skip_connect', 1), ('max_pool_3x3', 2), ('max_pool_3x3', 0), ('max_pool_3x3', 3),
-            ('skip_connect', 0), ('max_pool_3x3', 0), ('dil_conv_5x5', 2)], reduce_concat=range(2, 6))
-# 2022-01-10 10:01:06,259 beta = 0.480767
+PDARTS_TS_18_CIFAR100_LAMBDA_3 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_5x5', 1), ('dil_conv_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 1), ('sep_conv_3x3', 2), ('max_pool_3x3', 0), ('sep_conv_5x5', 1), ('dil_conv_3x3', 1), ('dil_conv_3x3', 2)], reduce_concat=range(2, 6))
+PDARTS_TS_18_CIFAR100_LAMBDA_0_1 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('sep_conv_5x5', 1), ('avg_pool_3x3', 0), ('sep_conv_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 3), ('avg_pool_3x3', 0), ('dil_conv_3x3', 1)], reduce_concat=range(2, 6))
+PDARTS_TS_18_CIFAR100_LAMBDA_0_5 = Genotype(normal=[('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 3), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('skip_connect', 0), ('skip_connect', 1), ('skip_connect', 0), ('skip_connect', 1), ('avg_pool_3x3', 0), ('avg_pool_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 4)], reduce_concat=range(2, 6))
+PDARTS_TS_18_CIFAR100_LAMBDA_2 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_5x5', 2), ('sep_conv_3x3', 0), ('dil_conv_5x5', 4)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('skip_connect', 1), ('avg_pool_3x3', 0), ('sep_conv_5x5', 1), ('avg_pool_3x3', 0), ('sep_conv_3x3', 2), ('max_pool_3x3', 0), ('dil_conv_3x3', 1)], reduce_concat=range(2, 6))
 
 
-# pcdarts-lfm
-# cifar100 seed 1
-Genotype(
-    normal=[('max_pool_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_5x5', 2), ('sep_conv_5x5', 1),
-            ('sep_conv_5x5', 3), ('sep_conv_5x5', 1), ('sep_conv_5x5', 0)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('dil_conv_5x5', 2), ('max_pool_3x3', 2),
-            ('dil_conv_5x5', 3), ('sep_conv_5x5', 3), ('sep_conv_5x5', 1)], reduce_concat=range(2, 6))
-# 2022-01-12 14:45:11,486 beta = 0.648976
+PDARTS_TS_18_CIFAR100_AB_1 = Genotype(normal=[('dil_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 3)], normal_concat=range(2, 6), reduce=[('skip_connect', 0), ('dil_conv_5x5', 1), ('avg_pool_3x3', 0), ('skip_connect', 1), ('skip_connect', 0), ('sep_conv_5x5', 2), ('skip_connect', 0), ('sep_conv_3x3', 1)], reduce_concat=range(2, 6))
+PDARTS_TS_18_CIFAR100_AB_4 = Genotype(normal=[('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 0), ('skip_connect', 1), ('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_5x5', 1)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 0), ('skip_connect', 1), ('avg_pool_3x3', 0), ('sep_conv_5x5', 2), ('avg_pool_3x3', 0), ('dil_conv_3x3', 1), ('avg_pool_3x3', 0), ('sep_conv_3x3', 4)], reduce_concat=range(2, 6))
 
-# cifar100 seed 2
-Genotype(
-    normal=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 3),
-            ('sep_conv_5x5', 2), ('max_pool_3x3', 3), ('sep_conv_5x5', 0)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2), ('sep_conv_5x5', 0), ('sep_conv_5x5', 2),
-            ('sep_conv_5x5', 3), ('max_pool_3x3', 4), ('sep_conv_5x5', 3)], reduce_concat=range(2, 6))
-# 2022-01-12 14:45:54,921 beta = 0.667371
+DARTS_TS_18_CIFAR10_AB_1 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('dil_conv_5x5', 1), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('avg_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 3)], reduce_concat=range(2, 6))
+DARTS_TS_18_CIFAR10_AB_4 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('dil_conv_3x3', 0), ('sep_conv_3x3', 1), ('skip_connect', 2), ('max_pool_3x3', 1), ('skip_connect', 2), ('dil_conv_3x3', 3), ('skip_connect', 2), ('skip_connect', 4)], reduce_concat=range(2, 6))
 
-# cifar100 seed 3
-Genotype(
-    normal=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 2), ('sep_conv_5x5', 1), ('sep_conv_5x5', 1),
-            ('sep_conv_5x5', 3), ('sep_conv_5x5', 3), ('sep_conv_3x3', 0)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('sep_conv_5x5', 2), ('dil_conv_5x5', 3),
-            ('sep_conv_5x5', 1), ('max_pool_3x3', 3), ('max_pool_3x3', 4)], reduce_concat=range(2, 6))
-# 2022-01-12 14:49:05,518 beta = 0.637933
+PDARTS_TUNED_CIFAR100 = Genotype(normal=[('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_3x3', 0), ('sep_conv_5x5', 3), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('avg_pool_3x3', 0), ('sep_conv_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_3x3', 2), ('max_pool_3x3', 1), ('sep_conv_3x3', 3), ('sep_conv_5x5', 1), ('dil_conv_5x5', 4)], reduce_concat=range(2, 6))
+PDARTS_TUNED_CIFAR10 = Genotype(normal=[('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('dil_conv_5x5', 1), ('avg_pool_3x3', 0), ('dil_conv_3x3', 2), ('avg_pool_3x3', 0), ('sep_conv_3x3', 3), ('avg_pool_3x3', 0), ('sep_conv_5x5', 3)], reduce_concat=range(2, 6))
 
-# cifar10 seed 1
-Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 2), ('sep_conv_5x5', 1),
-            ('sep_conv_3x3', 3), ('sep_conv_3x3', 3), ('sep_conv_5x5', 2)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('max_pool_3x3', 2),
-            ('sep_conv_3x3', 0), ('sep_conv_5x5', 2), ('max_pool_3x3', 0)], reduce_concat=range(2, 6))
-# 2022-01-12 16:43:16,031 beta = 0.670236
 
-# cifar10 seed 3
-genotype = Genotype(
-    normal=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 2), ('sep_conv_3x3', 1),
-            ('sep_conv_5x5', 2), ('sep_conv_5x5', 4), ('sep_conv_3x3', 1)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 2), ('sep_conv_3x3', 1), ('sep_conv_5x5', 2),
-            ('sep_conv_5x5', 1), ('sep_conv_3x3', 3), ('dil_conv_3x3', 4)], reduce_concat=range(2, 6))
-# 2022-01-12 19:30:00,264 beta = 0.671745
+DARTS_CIFAR10_LFM_RES18 = Genotype(normal=[('dil_conv_5x5', 1), ('dil_conv_5x5', 0), ('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('dil_conv_5x5', 3), ('dil_conv_5x5', 2), ('dil_conv_5x5', 3), ('dil_conv_5x5', 4)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1)], reduce_concat=range(2, 6))
+DARTS_CIFAR10_LFM_RES18_1 = Genotype(normal=[('dil_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('dil_conv_5x5', 3), ('sep_conv_3x3', 2), ('dil_conv_5x5', 3), ('sep_conv_5x5', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 3), ('max_pool_3x3', 0), ('skip_connect', 3)], reduce_concat=range(2, 6))
+DARTS_CIFAR10_LFM_RES18_2 = Genotype(normal=[('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('sep_conv_3x3', 0), ('skip_connect', 1), ('skip_connect', 1), ('dil_conv_3x3', 0)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 3), ('max_pool_3x3', 0), ('skip_connect', 3), ('max_pool_3x3', 0)], reduce_concat=range(2, 6))
 
-# cifar10 seed 2
-Genotype(
-    normal=[('avg_pool_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 2), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2),
-            ('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 4)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 2), ('dil_conv_5x5', 3),
-            ('sep_conv_5x5', 2), ('sep_conv_3x3', 4), ('sep_conv_3x3', 3)], reduce_concat=range(2, 6))
-# 2022-01-12 19:32:27,774 beta = 0.665017
+DARTS_CIFAR10_LFM_V2 = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('dil_conv_3x3', 1), ('dil_conv_3x3', 0)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 2), ('max_pool_3x3', 0)], reduce_concat=range(2, 6))
+DARTS_CIFAR10_LFM_V2_1 = Genotype(normal=[('skip_connect', 0), ('dil_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 0), ('dil_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('sep_conv_3x3', 0), ('max_pool_3x3', 1), ('skip_connect', 2), ('avg_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 0)], reduce_concat=range(2, 6))
+
+DARTS_CIFAR10_LFM_F3 = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('sep_conv_5x5', 3), ('sep_conv_3x3', 0), ('max_pool_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 2), ('dil_conv_3x3', 0), ('dil_conv_3x3', 3), ('sep_conv_5x5', 2), ('dil_conv_5x5', 3), ('sep_conv_3x3', 4)], reduce_concat=range(2, 6))
+DARTS_CIFAR10_LFM_F3_1 = Genotype(normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 0), ('dil_conv_3x3', 2), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('sep_conv_5x5', 2), ('skip_connect', 0), ('sep_conv_3x3', 3), ('sep_conv_3x3', 2), ('sep_conv_3x3', 2), ('dil_conv_5x5', 4)], reduce_concat=range(2, 6))
+
+DARTS_CIFAR100_LFM_F3 = Genotype(normal=[('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 0), ('skip_connect', 2), ('sep_conv_3x3', 1), ('skip_connect', 0), ('sep_conv_3x3', 0), ('skip_connect', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 0), ('skip_connect', 1), ('skip_connect', 2), ('max_pool_3x3', 0), ('sep_conv_3x3', 4), ('dil_conv_5x5', 3)], reduce_concat=range(2, 6))
+
+PCDARTS_CIFAR100_LFM_F3 = Genotype(normal=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('max_pool_3x3', 0), ('sep_conv_5x5', 4), ('sep_conv_5x5', 1)], normal_concat=range(2, 6), reduce=[('sep_conv_5x5', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_5x5', 1), ('sep_conv_3x3', 3), ('sep_conv_5x5', 2), ('max_pool_3x3', 3), ('max_pool_3x3', 4)], reduce_concat=range(2, 6))
+
+# Searched on cifar10
+PDARTS_CIFAR10_LFM_F3_HLR_1SKP = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('dil_conv_5x5', 2)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 1), ('dil_conv_5x5', 3), ('skip_connect', 0), ('skip_connect', 1)], reduce_concat=range(2, 6))
+# Cifar100: 16.23
+PDARTS_CIFAR10_LFM_F3_MLR_1SKP = Genotype(normal=[('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('dil_conv_3x3', 1), ('skip_connect', 1), ('dil_conv_5x5', 2), ('max_pool_3x3', 0), ('avg_pool_3x3', 3), ('dil_conv_3x3', 3), ('dil_conv_5x5', 4)], reduce_concat=range(2, 6))
+# Cifar100: 16.77
+PDARTS_CIFAR10_LFM_F3_LLR_1SKP = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 0), ('skip_connect', 1)], normal_concat=range(2, 6), reduce=[('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('dil_conv_5x5', 2), ('max_pool_3x3', 0), ('dil_conv_5x5', 3), ('sep_conv_5x5', 3), ('avg_pool_3x3', 4)], reduce_concat=range(2, 6))
+# Cifar100: 16.53
+PDARTS_CIFAR10_LFM_F3_HLR_0SKP = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 0), ('dil_conv_5x5', 2)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 1), ('dil_conv_5x5', 3), ('skip_connect', 0), ('skip_connect', 1)], reduce_concat=range(2, 6))
+# Cifar100: 15.78
+PDARTS_CIFAR10_LFM_F3_HLR_2SKP = Genotype(normal=[('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('skip_connect', 0), ('dil_conv_5x5', 2)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 0), ('avg_pool_3x3', 1), ('max_pool_3x3', 0), ('skip_connect', 2), ('max_pool_3x3', 1), ('dil_conv_5x5', 3), ('skip_connect', 0), ('skip_connect', 1)], reduce_concat=range(2, 6))
+# Cifar100: 16.53
+PDARTS_CIFAR10_LFM_F3_LLR_0SKP = Genotype(normal=[('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6), reduce=[('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('dil_conv_5x5', 2), ('max_pool_3x3', 0), ('dil_conv_5x5', 3), ('sep_conv_5x5', 3), ('avg_pool_3x3', 4)], reduce_concat=range(2, 6))
+# Cifar100: 15.79
+PDARTS_CIFAR10_LFM_F3_LLR_2SKP = Genotype(normal=[('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 0), ('skip_connect', 1)], normal_concat=range(2, 6), reduce=[('sep_conv_5x5', 0), ('sep_conv_3x3', 1), ('max_pool_3x3', 0), ('dil_conv_5x5', 2), ('max_pool_3x3', 0), ('dil_conv_5x5', 3), ('sep_conv_5x5', 3), ('avg_pool_3x3', 4)], reduce_concat=range(2, 6))
+# Cifar100: 17.45
 
 
 
 
 
-#### formulation 1
-DARTS_CIFAR10_LFM_RES18 = Genotype(
-    normal=[('dil_conv_5x5', 1), ('dil_conv_5x5', 0), ('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('dil_conv_5x5', 3),
-            ('dil_conv_5x5', 2), ('dil_conv_5x5', 3), ('dil_conv_5x5', 4)], normal_concat=range(2, 6),
-    reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0),
-            ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1)], reduce_concat=range(2, 6))
-DARTS_CIFAR10_LFM_RES18_1 = Genotype(
-    normal=[('dil_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 0), ('dil_conv_5x5', 1), ('dil_conv_5x5', 3),
-            ('sep_conv_3x3', 2), ('dil_conv_5x5', 3), ('sep_conv_5x5', 1)], normal_concat=range(2, 6),
-    reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0),
-            ('skip_connect', 3), ('max_pool_3x3', 0), ('skip_connect', 3)], reduce_concat=range(2, 6))
+
 
 ### formulation 3
 DARTS_CIFAR10_LFM_F3 = Genotype(
@@ -447,52 +380,3 @@ pcdarts_lfm_cifar100_best = pcdarts_lfm_cifar100_3
 pcdarts_lfm_cifar10_best = pcdarts_lfm_cifar10_6
 pdarts_lfm_cifar100_best = pdarts_lfm_cifar100_1
 pdarts_lfm_cifar10_best = pdarts_lfm_cifar10_2
-
-############################################################ not useful below
-# Namespace(arch_learning_rate=0.0006, arch_weight_decay=0.001, batch_size=112, cutout=False, cutout_length=16,
-#           data='../../data', drop_path_prob=0.3, epochs=50, gpu='0', grad_clip=5, init_channels=16, is_parallel=0,
-#           layers=8, learning_rate=0.1, learning_rate_beta=0.002, learning_rate_min=0.0, model_beta='0.5 fixed', momentum=0.9,
-#           num_workers=2, report_freq=50, save='search-EXP-20211004-155300', seed=2, set='cifar10', train_portion=0.5,
-#           unrolled=False, weight_decay=0.0003)
-# param size = 0.299578MB beta = 0.500000 valid_acc 87.115999 99.551999 valid_loss 3.823299e-01
-Genotype(
-    normal=[('max_pool_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('max_pool_3x3', 3),
-            ('sep_conv_5x5', 1), ('sep_conv_5x5', 3), ('sep_conv_5x5', 1)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 2), ('avg_pool_3x3', 1), ('max_pool_3x3', 2),
-            ('max_pool_3x3', 3), ('sep_conv_3x3', 4), ('sep_conv_5x5', 2)], reduce_concat=range(2, 6))
-
-# Namespace(arch_learning_rate=0.0006, arch_weight_decay=0.001, batch_size=112, cutout=False, cutout_length=16,
-#           data='../../data', drop_path_prob=0.3, epochs=50, gpu='0', grad_clip=5, init_channels=16, is_parallel=0,
-#           layers=8, learning_rate=0.1, learning_rate_beta=0.002, learning_rate_min=0.0, model_beta='0.8 fixed', momentum=0.9,
-#           num_workers=2, report_freq=50, save='search-EXP-20211006-002616', seed=2, set='cifar100', train_portion=0.5,
-#           unrolled=False, weight_decay=0.0003)
-# param size = 0.322708MB beta = 0.800000 valid_acc 59.360000 87.127999 valid_loss 1.452640e+00
-Genotype(
-    normal=[('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('max_pool_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 2),
-            ('sep_conv_3x3', 3), ('sep_conv_5x5', 2), ('sep_conv_3x3', 0)], normal_concat=range(2, 6),
-    reduce=[('dil_conv_5x5', 1), ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('sep_conv_5x5', 2), ('skip_connect', 1),
-            ('dil_conv_5x5', 3), ('skip_connect', 1), ('sep_conv_3x3', 4)], reduce_concat=range(2, 6))
-
-# Namespace(arch_learning_rate=0.0006, arch_weight_decay=0.001, batch_size=112, cutout=False, cutout_length=16,
-#           data='../../data', drop_path_prob=0.3, epochs=50, gpu='0', grad_clip=5, init_channels=16, is_parallel=0,
-#           layers=8, learning_rate=0.1, learning_rate_beta=0.002, learning_rate_min=0.0, model_beta='0.8 fixed', momentum=0.9,
-#           num_workers=2, report_freq=50, save='search-EXP-20211005-175644', seed=2, set='cifar100', train_portion=0.5,
-#           unrolled=False, weight_decay=0.0003)
-# param size = 0.322708MB beta = 0.800000 valid_acc 59.852000 87.495999 valid_loss 1.424694e+0
-Genotype(
-    normal=[('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 2), ('sep_conv_5x5', 0), ('sep_conv_3x3', 0),
-            ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1)], normal_concat=range(2, 6),
-    reduce=[('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('dil_conv_3x3', 2), ('skip_connect', 1), ('sep_conv_5x5', 3),
-            ('dil_conv_3x3', 1), ('sep_conv_5x5', 1), ('sep_conv_5x5', 4)], reduce_concat=range(2, 6))
-
-# Namespace(arch_learning_rate=0.0006, arch_weight_decay=0.001, batch_size=112, cutout=False, cutout_length=16,
-#           data='../../data', drop_path_prob=0.3, epochs=50, gpu='0', grad_clip=5, init_channels=16, is_parallel=0,
-#           layers=8, learning_rate=0.1, learning_rate_beta=0.002, learning_rate_min=0.0, model_beta='1.0 fixed', momentum=0.9,
-#           num_workers=2, report_freq=50, save='search-EXP-20211007-130729', seed=2, set='cifar100', train_portion=0.5,
-#           unrolled=False, weight_decay=0.0003)
-# param size = 0.322708MB beta = 1.000000 valid_acc 57.983999 86.047999 valid_loss 1.519299e+00
-Genotype(
-    normal=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('skip_connect', 0), ('skip_connect', 1), ('max_pool_3x3', 0),
-            ('sep_conv_5x5', 2), ('sep_conv_3x3', 0), ('sep_conv_3x3', 3)], normal_concat=range(2, 6),
-    reduce=[('skip_connect', 1), ('sep_conv_5x5', 0), ('skip_connect', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 1),
-            ('sep_conv_5x5', 0), ('sep_conv_5x5', 1), ('dil_conv_3x3', 0)], reduce_concat=range(2, 6))

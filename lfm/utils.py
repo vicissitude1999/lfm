@@ -16,10 +16,17 @@ class AvgrageMeter(object):
         self.sum = 0
         self.cnt = 0
 
+        self.records = np.asarray([])
+        self.std = 0
+
     def update(self, val, n=1):
         self.sum += val * n
         self.cnt += n
         self.avg = self.sum / self.cnt
+    
+    def update_std(self, val):
+        self.records.append(val)
+        self.std = np.std(self.records)
 
 
 def accuracy(output, target, topk=(1,)):
@@ -59,8 +66,8 @@ class Cutout(object):
         return img
 
 
-def _data_transforms_cifar(args):
-    if args.set == 'cifar10':
+def _data_transforms_cifar(set, cutout, cutout_length):
+    if set == 'cifar10':
         CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
         CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
     else:
@@ -73,8 +80,8 @@ def _data_transforms_cifar(args):
         transforms.ToTensor(),
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
     ])
-    if args.cutout:
-        train_transform.transforms.append(Cutout(args.cutout_length))
+    if cutout:
+        train_transform.transforms.append(Cutout(cutout_length))
     valid_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
@@ -111,10 +118,10 @@ def count_parameters_in_MB(model):
 
 
 def save_checkpoint(state, is_best, save):
-    filename = os.path.join(save, 'checkpoint.pth.tar')
+    filename = os.path.join(save, "current.ckpt")
     torch.save(state, filename)
     if is_best:
-        best_filename = os.path.join(save, 'model_best.pth.tar')
+        best_filename = os.path.join(save, 'best.ckpt')
         shutil.copyfile(filename, best_filename)
 
 
@@ -136,10 +143,7 @@ def drop_path(x, drop_prob):
 
 
 def create_exp_dir(path, scripts_to_save=None):
-    if not os.path.exists(path):
-        os.mkdir(path)
-    print('Experiment dir : {}'.format(path))
-
+    os.makedirs(path, exist_ok=True)
     if scripts_to_save is not None:
         os.mkdir(os.path.join(path, 'scripts'))
         for script in scripts_to_save:
