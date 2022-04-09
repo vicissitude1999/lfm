@@ -16,13 +16,11 @@ import torchvision.transforms as transforms
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 
-from lfm import genotypes
-from lfm import utils
+from lfm import genotypes, utils
 from lfm.model import NetworkImageNet as Network
 
 parser = argparse.ArgumentParser("training imagenet")
 # general
-parser.add_argument("--local_rank", default=-1, type=int)
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--data', type=str, default="../../data", help='dataset directory')
 parser.add_argument('--save', type=str, default='debug', help='experiment output directory')
@@ -31,7 +29,7 @@ parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--report_freq', type=int, default=100, help='report frequency')
 # model
 parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
-parser.add_argument('--init_channels', type=int, default=48, help='num of init channels')
+parser.add_argumentT('--init_channels', type=int, default=48, help='num of init channels')
 parser.add_argument('--layers', type=int, default=14, help='total number of layers')
 parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
 parser.add_argument('--auxiliary_weight', type=float, default=0.4, help='weight for auxiliary loss')
@@ -52,7 +50,7 @@ args, unparsed = parser.parse_known_args()
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 # logging
 log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO if int(os.environ['LOCAL_RANK']) in [-1, 0] else logging.WARN,
     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
 fh.setFormatter(logging.Formatter(log_format))
@@ -96,7 +94,7 @@ def main():
         logging.info('no gpu device available')
         sys.exit(1)
     
-    local_rank = args.local_rank
+    local_rank = int(os.environ['LOCAL_RANK'])
     init_seeds(args.seed, False)
     torch.cuda.set_device(local_rank)
     dist.init_process_group(backend="nccl")
