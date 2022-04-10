@@ -4,7 +4,6 @@ import logging
 import os
 import random
 import sys
-import time
 
 import numpy as np
 import torch
@@ -21,15 +20,16 @@ from lfm.model import NetworkImageNet as Network
 
 parser = argparse.ArgumentParser("training imagenet")
 # general
+parser.add_argument('--local_rank', type=int, default=-1)
 parser.add_argument('--seed', type=int, default=0, help='random seed')
-parser.add_argument('--data', type=str, default="../../data", help='dataset directory')
-parser.add_argument('--save', type=str, default='debug', help='experiment output directory')
+parser.add_argument('--data', type=str, default="../data", help='dataset directory')
+parser.add_argument('--save', type=str, default='outputs/tmp/DEBUG', help='experiment output directory')
 parser.add_argument('--epochs', type=int, default=250, help='num of training epochs')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--report_freq', type=int, default=100, help='report frequency')
 # model
 parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
-parser.add_argumentT('--init_channels', type=int, default=48, help='num of init channels')
+parser.add_argument('--init_channels', type=int, default=48, help='num of init channels')
 parser.add_argument('--layers', type=int, default=14, help='total number of layers')
 parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
 parser.add_argument('--auxiliary_weight', type=float, default=0.4, help='weight for auxiliary loss')
@@ -50,7 +50,7 @@ args, unparsed = parser.parse_known_args()
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 # logging
 log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO if int(os.environ['LOCAL_RANK']) in [-1, 0] else logging.WARN,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
     format=log_format, datefmt='%m/%d %I:%M:%S %p')
 fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
 fh.setFormatter(logging.Formatter(log_format))
@@ -93,15 +93,15 @@ def main():
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
         sys.exit(1)
-    
-    local_rank = int(os.environ['LOCAL_RANK'])
+
+    local_rank = args.local_rank
     init_seeds(args.seed, False)
     torch.cuda.set_device(local_rank)
     dist.init_process_group(backend="nccl")
     
-    logging.info("args = %s", args)
+    logging.info(f"args = {args}")
     genotype = eval("genotypes.%s" % args.arch)
-    logging.info("genotypes", genotype)
+    logging.info(f"genotypes = {genotype}")
         
     model = Network(args.init_channels, CLASSES, args.layers, args.auxiliary, genotype).to(local_rank)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
@@ -150,12 +150,10 @@ def main():
     
     best_acc_top1 = 0
     for epoch in range(args.epochs):
-        epoch_start = time.time()
-        scheduler.step()
-        logging.info('epoch %d lr %e', epoch, scheduler.get_lr()[0])
+        logging.info('epoch %d lr %e', epoch, optimizer.param_groups[0]['lr'])
         model.module.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
-        train_acc_top1, train_acc_top5, train_obj = train(train_queue, model, criterion_smooth, optimizer)
+        train_acc_top1, train_acc_top5, train_obj = train(train_queue, model, criterion_smooth, optimizer, local_rank)
         logging.info('[train] loss %f top1 %f top5 %f', train_obj, train_acc_top1, train_acc_top5)
 
         valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion)
@@ -165,6 +163,7 @@ def main():
             is_best = True
         logging.info('[valid] loss %f top1 %f top5 %f top1_best %f',
                      valid_obj, valid_acc_top1, valid_acc_top5, best_acc_top1)
+        scheduler.step()
         
         if dist.get_rank() == 0:
             utils.save_checkpoint({
@@ -173,8 +172,6 @@ def main():
                 'best_acc_top1': best_acc_top1,
                 'optimizer' : optimizer.state_dict(),
                 }, is_best, args.save)
-        
-        logging.info('epoch duration %ds.', time.time() - epoch_start)
 
 
 def train(train_queue, model, criterion, optimizer, local_rank):

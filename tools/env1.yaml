@@ -1,9 +1,9 @@
 name: env1
 dependencies:
-  - python=3.8
-  - pytorch==1.8.1
-  - torchvision==0.9.1
-  - torchaudio==0.8.1
+  - python=3.9
+  - pytorch==1.9
+  - torchvision==0.10
+  - torchaudio==0.9
   - cudatoolkit=10.2
   - conda-build
   - tensorboard

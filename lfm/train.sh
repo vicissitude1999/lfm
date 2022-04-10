@@ -12,6 +12,8 @@
 
 # 11g vram, 1080Ti or 2080Ti
 
+source activate /renyi-volume/env1
+
 python train.py \
 --method pcdarts-lfm \
 --set cifar100 \
