@@ -5,6 +5,14 @@ kind: Pod
 metadata:
   name: renyi-gpu
 spec:
+  volumes:
+  - name: renyi-volume
+    persistentVolumeClaim:
+      claimName: renyi-volume
+  - name: dshm
+    emptyDir:
+      medium: Memory
+
   containers:
   - name: gpu-container
     image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
@@ -12,23 +20,20 @@ spec:
     args: [ "-c", "sleep infinity" ]
     resources:
       requests:
-        memory: "4Gi"
+        memory: "8Gi"
         cpu: "2"
         nvidia.com/gpu: 2
       limits:
-        memory: "4Gi"
+        memory: "8Gi"
         cpu: "2"
         nvidia.com/gpu: 2
     volumeMounts:
     - name: renyi-volume
       mountPath: /renyi-volume
+    - name: dshm
+      mountPath: /dev/shm
 
   restartPolicy: Never
-
-  volumes:
-    - name: renyi-volume
-      persistentVolumeClaim:
-        claimName: renyi-volume
 
   affinity:
     nodeAffinity:
