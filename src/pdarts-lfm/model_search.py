@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from operations import *
-from genotypes import PRIMITIVES
-from genotypes import Genotype
+from src.operations import *
+from src.genotypes import PRIMITIVES
+from src.genotypes import Genotype
 
 OPS['none'] = lambda C, stride, affine: ZeroPDARTS(stride)
 
@@ -78,7 +78,8 @@ class Cell(nn.Module):
 
 class Network(nn.Module):
 
-    def __init__(self, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3, switches_normal=[],
+    def __init__(self, C, num_classes, layers, criterion,
+                 steps=4, multiplier=4, stem_multiplier=3, switches_normal=[],
                  switches_reduce=[], p=0.0, shared_a=None):
         super(Network, self).__init__()
         self._C = C

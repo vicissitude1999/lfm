@@ -79,14 +79,14 @@ class Identity(nn.Module):
 
 class Zero(nn.Module):
 
-  def __init__(self, stride):
-    super(Zero, self).__init__()
-    self.stride = stride
+    def __init__(self, stride):
+        super(Zero, self).__init__()
+        self.stride = stride
 
-  def forward(self, x):
-    if self.stride == 1:
-      return x.mul(0.)
-    return x[:,:,::self.stride,::self.stride].mul(0.)
+    def forward(self, x):
+        if self.stride == 1:
+            return x.mul(0.)
+        return x[:,:,::self.stride,::self.stride].mul(0.)
 
 
 class ZeroPDARTS(nn.Module):
