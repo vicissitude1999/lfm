@@ -15,10 +15,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils
 import torchvision.datasets as dset
-from src import utils
-from src.combination import LinearCombination
 from torch.utils.tensorboard import SummaryWriter
 
+from src import utils
+from src.combination import LinearCombination
 from architect import Architect
 from model_search import Network
 
@@ -52,7 +52,7 @@ parser.add_argument("--arch_weight_decay", type=float , default=1e-3, help="weig
 
 
 args = parser.parse_args()
-utils.create_exp_dir(args.save, scripts_to_save=None)
+utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 with open(Path(args.save, "args.json"), "w") as f:
     json.dump(vars(args), f)
 
@@ -226,7 +226,8 @@ def train(train_queue, valid_queue,
         top5.update(prec5.item(), n)
 
         if step % args.report_freq == 0:
-            logging.info("train %03d loss %e loss_rw %e top1 %f top5 %f", step, objs.avg, objr.avg, top1.avg, top5.avg)
+            logging.info("train %03d/%03d loss %e loss_rw %e top1 %f top5 %f",
+                         step, len(train_queue), objs.avg, objr.avg, top1.avg, top5.avg)
             writer.add_scalar("LossBatch/train", objs.avg, epoch * len(train_queue) + step)
             writer.add_scalar("LossRWBatch/train", objr.avg, epoch * len(train_queue) + step)
             writer.add_scalar("AccuBatch/train", top1.avg, epoch * len(train_queue) + step)
